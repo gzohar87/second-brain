@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# sb — bootstrap script for LLM Wiki vaults
+# Usage:
+#   sb init <path>                  Standalone vault (new git repo)
+#   sb init --embedded [path]       Embedded vault (.wiki/ inside existing repo)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRAMEWORK_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+TODAY="$(date +%Y-%m-%d)"
+
+usage() {
+  cat <<EOF
+Usage:
+  sb init <path>                  Create a standalone wiki vault
+  sb init --embedded [path]       Create an embedded wiki inside an existing repo
+
+Options:
+  --embedded    Nest the vault under <path>/.wiki/ (defaults to current dir)
+EOF
+  exit 1
+}
+
+die() { echo "Error: $*" >&2; exit 1; }
+
+# --- Argument parsing ---
+
+[[ $# -ge 1 ]] || usage
+[[ "$1" == "init" ]] || die "Unknown subcommand '$1'. Only 'init' is supported."
+shift
+
+EMBEDDED=false
+TARGET_PATH=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --embedded) EMBEDDED=true; shift ;;
+    -*) die "Unknown option '$1'" ;;
+    *)
+      [[ -z "$TARGET_PATH" ]] || die "Unexpected argument '$1'"
+      TARGET_PATH="$1"; shift ;;
+  esac
+done
+
+# --- Resolve paths ---
+
+if $EMBEDDED; then
+  REPO_ROOT="${TARGET_PATH:-.}"
+  REPO_ROOT="$(cd "$REPO_ROOT" 2>/dev/null && pwd)" || die "Path '$TARGET_PATH' does not exist"
+  [[ -d "$REPO_ROOT/.git" ]] || die "'$REPO_ROOT' is not a git repository (embedded mode requires one)"
+  VAULT_PATH="$REPO_ROOT/.wiki"
+  WIKI_PATH_PLACEHOLDER=".wiki/"
+else
+  [[ -n "$TARGET_PATH" ]] || die "Standalone mode requires a <path> argument"
+  TARGET_PATH="$(mkdir -p "$TARGET_PATH" && cd "$TARGET_PATH" && pwd)"
+  VAULT_PATH="$TARGET_PATH"
+  REPO_ROOT="$TARGET_PATH"
+  WIKI_PATH_PLACEHOLDER="wiki/"
+fi
+
+[[ ! -d "$VAULT_PATH/wiki" ]] || die "Vault already exists at '$VAULT_PATH'"
+
+# --- Create directory structure ---
+
+echo "Creating vault at $VAULT_PATH ..."
+mkdir -p "$VAULT_PATH"/{raw/assets,wiki}
+
+# --- Copy and template files ---
+
+template() {
+  # template <src> <dst> — copy file, replacing {{DATE}} and {{WIKI_PATH}}
+  sed -e "s/{{DATE}}/$TODAY/g" \
+      -e "s|{{WIKI_PATH}}|$WIKI_PATH_PLACEHOLDER|g" \
+      "$FRAMEWORK_DIR/templates/$1" > "$2"
+}
+
+template index.md "$VAULT_PATH/index.md"
+template log.md   "$VAULT_PATH/log.md"
+
+# --- CLAUDE.md ---
+
+if $EMBEDDED; then
+  # Append snippet to repo-root CLAUDE.md (create if missing)
+  echo "" >> "$REPO_ROOT/CLAUDE.md"
+  template claude-md-snippet.md /dev/stdout >> "$REPO_ROOT/CLAUDE.md"
+else
+  template claude-md-snippet.md "$VAULT_PATH/CLAUDE.md"
+fi
+
+# --- Copy wiki skills ---
+
+SKILLS_DST="$REPO_ROOT/.claude/skills"
+mkdir -p "$SKILLS_DST"
+for skill_dir in "$FRAMEWORK_DIR/.claude/skills"/wiki-*/; do
+  skill_name="$(basename "$skill_dir")"
+  if [[ -d "$skill_dir" ]]; then
+    cp -r "$skill_dir" "$SKILLS_DST/$skill_name"
+  fi
+done
+
+# --- Git init (standalone only) ---
+
+if ! $EMBEDDED; then
+  git init "$VAULT_PATH" --quiet
+fi
+
+# --- Obsidian settings ---
+
+mkdir -p "$VAULT_PATH/.obsidian"
+cat > "$VAULT_PATH/.obsidian/app.json" <<'JSON'
+{
+  "useMarkdownLinks": false,
+  "newLinkFormat": "shortest",
+  "showFrontmatter": true,
+  "strictLineBreaks": true
+}
+JSON
+
+# --- Summary ---
+
+echo ""
+echo "=== Wiki vault created ==="
+echo "  Vault path : $VAULT_PATH"
+echo "  Directories: raw/  raw/assets/  wiki/"
+echo "  Files      : index.md  log.md  CLAUDE.md"
+echo "  Skills     : wiki-init  wiki-ingest  wiki-query  wiki-lint"
+if ! $EMBEDDED; then
+  echo "  Git repo   : initialized"
+fi
+echo ""
+echo "Next step: open Claude Code in the project and run /wiki-init"
