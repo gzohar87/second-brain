@@ -7,7 +7,7 @@ Instead of RAG, the LLM incrementally builds and maintains a persistent wiki of 
 ## Deployment Modes
 
 - **Standalone** -- the wiki lives in its own git repo (like this one).
-- **Embedded** -- the wiki lives in a `.wiki/` directory inside a code repo. In this mode, entries reference live code via file paths rather than copying snippets.
+- **Embedded** -- the wiki lives in a `<repo-name>-wiki/` directory inside a code repo (customizable via `--name`). In this mode, entries reference live code via file paths rather than copying snippets.
 
 ## Operations
 
@@ -23,11 +23,24 @@ All operations are available as Claude Code skills:
 ## Quick Start
 
 ```bash
-tools/sb init <path>   # bootstrap directory structure
+# Standalone vault (own git repo)
+sb init ~/my-wiki
+
+# Embedded vault inside an existing repo
+cd ~/my-project
+sb init --embedded                  # creates my-project-wiki/
+sb init --embedded --name research  # creates research/
 ```
 
-Then run `/wiki-init` in Claude Code to configure the wiki for your domain.
+Then restart Claude Code and run `/wiki-init` to configure the wiki for your domain.
+
+## Uninstall
+
+```bash
+sb uninstall                   # removes vault, skills, and CLAUDE.md snippet
+sb uninstall --name research   # if you used a custom name
+```
 
 ## Viewer
 
-The wiki is plain markdown with `[[wikilinks]]`, so [Obsidian](https://obsidian.md) works as a viewer out of the box. Open the repo root (or `.wiki/` in embedded mode) as an Obsidian vault.
+The wiki is plain markdown with `[[wikilinks]]`, so [Obsidian](https://obsidian.md) works as a viewer out of the box. Open the vault directory as an Obsidian vault.

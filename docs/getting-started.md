@@ -24,14 +24,18 @@ git clone <repo-url> second-brain
 second-brain/tools/sb init ~/my-wiki
 ```
 
-**Embedded** — adds a `.wiki/` folder inside an existing repo:
+**Embedded** — adds a `<repo-name>-wiki/` folder inside an existing repo (override with `--name`):
 
 ```bash
 cd ~/my-project
 ~/second-brain/tools/sb init --embedded
 ```
 
-### 3. Configure the wiki structure
+### 3. Restart Claude Code
+
+Claude Code needs a restart to detect the newly installed skills.
+
+### 4. Configure the wiki structure
 
 Open the vault in Claude Code and run:
 
@@ -41,7 +45,7 @@ Open the vault in Claude Code and run:
 
 Claude will scan your project, propose subdirectories and an initial page outline, and set up the wiki skeleton.
 
-### 4. Ingest sources
+### 5. Ingest sources
 
 Drop files (Markdown, PDFs, code, screenshots) into `raw/`, then run:
 

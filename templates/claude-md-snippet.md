@@ -1,3 +1,4 @@
+<!-- BEGIN second-brain wiki conventions -->
 # Wiki Conventions
 
 Wiki location: `{{WIKI_PATH}}`
@@ -15,3 +16,4 @@ Wiki location: `{{WIKI_PATH}}`
 1. **Never** modify anything in `raw/` — that directory is source-of-truth input
 2. **Always** update `index.md` and `log.md` when creating or modifying wiki pages
 3. Note contradictions explicitly — do not silently resolve conflicting information
+<!-- END second-brain wiki conventions -->

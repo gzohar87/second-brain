@@ -13,7 +13,7 @@ Ask the user:
 1. **What is this wiki for?** (domain, intent, what kind of knowledge will it track)
 2. **Deployment mode?**
    - **Standalone**: the wiki is its own git repo (for personal knowledge, research, book notes)
-   - **Embedded**: the wiki lives as `.wiki/` inside an existing code repo
+   - **Embedded**: the wiki lives in a named directory inside an existing code repo (default: `<repo-name>-wiki/`)
 
 If embedded, explore the repo structure to understand the codebase — read the top-level directory listing, any existing README, CLAUDE.md, and key config files.
 
@@ -79,9 +79,9 @@ Present the proposal and **wait for user approval** before creating anything.
 
 ### Embedded mode
 Same as above, but:
-- Create everything under `.wiki/` in the repo root
+- Create everything under the vault directory (e.g., `<repo-name>-wiki/`) in the repo root
 - Do NOT run `git init` (the repo already has git)
-- The wiki path is `.wiki/`
+- The wiki path is the vault directory name
 
 ## Step 4: Set Up CLAUDE.md
 
@@ -89,7 +89,7 @@ Same as above, but:
 Create a new `CLAUDE.md` at the vault root with the wiki conventions. Replace `{{WIKI_PATH}}` with the appropriate path (root-level `wiki/`).
 
 ### Embedded mode
-Append the wiki conventions block to the existing `CLAUDE.md` (or create one if it doesn't exist). Replace `{{WIKI_PATH}}` with `.wiki/`. The conventions block:
+Append the wiki conventions block to the existing `CLAUDE.md` (or create one if it doesn't exist). Replace `{{WIKI_PATH}}` with the vault directory path. The conventions block:
 
 ```markdown
 # Wiki Conventions
@@ -113,7 +113,7 @@ Wiki location: `<WIKI_PATH>`
 
 ## Step 5: Configure Obsidian
 
-Create `.obsidian/app.json` (at vault root for standalone, or at `.wiki/.obsidian/app.json` for embedded):
+Create `.obsidian/app.json` at the vault root:
 
 ```json
 {

@@ -3,8 +3,9 @@ set -euo pipefail
 
 # sb — bootstrap script for LLM Wiki vaults
 # Usage:
-#   sb init <path>                  Standalone vault (new git repo)
-#   sb init --embedded [path]       Embedded vault (.wiki/ inside existing repo)
+#   sb init <path>                              Standalone vault (new git repo)
+#   sb init --embedded [--name NAME] [path]     Embedded vault inside existing repo
+#   sb uninstall [--name NAME] [path]           Remove embedded vault and skills
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRAMEWORK_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -13,11 +14,13 @@ TODAY="$(date +%Y-%m-%d)"
 usage() {
   cat <<EOF
 Usage:
-  sb init <path>                  Create a standalone wiki vault
-  sb init --embedded [path]       Create an embedded wiki inside an existing repo
+  sb init <path>                              Create a standalone wiki vault
+  sb init --embedded [--name NAME] [path]     Create an embedded wiki inside an existing repo
+  sb uninstall [--name NAME] [path]           Remove embedded vault, skills, and CLAUDE.md snippet
 
 Options:
-  --embedded    Nest the vault under <path>/.wiki/ (defaults to current dir)
+  --embedded    Create vault inside an existing repo (default: current dir)
+  --name NAME   Vault directory name (default: <repo-name>-wiki)
 EOF
   exit 1
 }
@@ -27,15 +30,21 @@ die() { echo "Error: $*" >&2; exit 1; }
 # --- Argument parsing ---
 
 [[ $# -ge 1 ]] || usage
-[[ "$1" == "init" ]] || die "Unknown subcommand '$1'. Only 'init' is supported."
-shift
+SUBCOMMAND="$1"; shift
+
+case "$SUBCOMMAND" in
+  init|uninstall) ;;
+  *) die "Unknown subcommand '$SUBCOMMAND'. Use 'init' or 'uninstall'." ;;
+esac
 
 EMBEDDED=false
 TARGET_PATH=""
+VAULT_NAME=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --embedded) EMBEDDED=true; shift ;;
+    --name) [[ $# -ge 2 ]] || die "--name requires a value"; VAULT_NAME="$2"; shift 2 ;;
     -*) die "Unknown option '$1'" ;;
     *)
       [[ -z "$TARGET_PATH" ]] || die "Unexpected argument '$1'"
@@ -43,72 +52,79 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# --- Resolve paths ---
+# --- Resolve repo root and vault name ---
 
-if $EMBEDDED; then
+resolve_repo() {
   REPO_ROOT="${TARGET_PATH:-.}"
   REPO_ROOT="$(cd "$REPO_ROOT" 2>/dev/null && pwd)" || die "Path '$TARGET_PATH' does not exist"
-  [[ -d "$REPO_ROOT/.git" ]] || die "'$REPO_ROOT' is not a git repository (embedded mode requires one)"
-  VAULT_PATH="$REPO_ROOT/.wiki"
-  WIKI_PATH_PLACEHOLDER=".wiki/"
-else
-  [[ -n "$TARGET_PATH" ]] || die "Standalone mode requires a <path> argument"
-  TARGET_PATH="$(mkdir -p "$TARGET_PATH" && cd "$TARGET_PATH" && pwd)"
-  VAULT_PATH="$TARGET_PATH"
-  REPO_ROOT="$TARGET_PATH"
-  WIKI_PATH_PLACEHOLDER="wiki/"
-fi
+  [[ -d "$REPO_ROOT/.git" ]] || die "'$REPO_ROOT' is not a git repository"
 
-[[ ! -d "$VAULT_PATH/wiki" ]] || die "Vault already exists at '$VAULT_PATH'"
+  if [[ -z "$VAULT_NAME" ]]; then
+    VAULT_NAME="$(basename "$REPO_ROOT")-wiki"
+  fi
 
-# --- Create directory structure ---
-
-echo "Creating vault at $VAULT_PATH ..."
-mkdir -p "$VAULT_PATH"/{raw/assets,wiki}
-
-# --- Copy and template files ---
-
-template() {
-  # template <src> <dst> — copy file, replacing {{DATE}} and {{WIKI_PATH}}
-  sed -e "s/{{DATE}}/$TODAY/g" \
-      -e "s|{{WIKI_PATH}}|$WIKI_PATH_PLACEHOLDER|g" \
-      "$FRAMEWORK_DIR/templates/$1" > "$2"
+  VAULT_PATH="$REPO_ROOT/$VAULT_NAME"
 }
 
-template index.md "$VAULT_PATH/index.md"
-template log.md   "$VAULT_PATH/log.md"
+# =============================================================================
+# INIT
+# =============================================================================
 
-# --- CLAUDE.md ---
-
-if $EMBEDDED; then
-  # Append snippet to repo-root CLAUDE.md (create if missing)
-  echo "" >> "$REPO_ROOT/CLAUDE.md"
-  template claude-md-snippet.md /dev/stdout >> "$REPO_ROOT/CLAUDE.md"
-else
-  template claude-md-snippet.md "$VAULT_PATH/CLAUDE.md"
-fi
-
-# --- Copy wiki skills ---
-
-SKILLS_DST="$REPO_ROOT/.claude/skills"
-mkdir -p "$SKILLS_DST"
-for skill_dir in "$FRAMEWORK_DIR/.claude/skills"/wiki-*/; do
-  skill_name="$(basename "$skill_dir")"
-  if [[ -d "$skill_dir" ]]; then
-    cp -r "$skill_dir" "$SKILLS_DST/$skill_name"
+cmd_init() {
+  if $EMBEDDED; then
+    resolve_repo
+    WIKI_PATH_PLACEHOLDER="$VAULT_NAME/"
+  else
+    [[ -n "$TARGET_PATH" ]] || die "Standalone mode requires a <path> argument"
+    TARGET_PATH="$(mkdir -p "$TARGET_PATH" && cd "$TARGET_PATH" && pwd)"
+    VAULT_PATH="$TARGET_PATH"
+    VAULT_NAME="$(basename "$TARGET_PATH")"
+    REPO_ROOT="$TARGET_PATH"
+    WIKI_PATH_PLACEHOLDER="wiki/"
   fi
-done
 
-# --- Git init (standalone only) ---
+  [[ ! -d "$VAULT_PATH/wiki" ]] || die "Vault already exists at '$VAULT_PATH'"
 
-if ! $EMBEDDED; then
-  git init "$VAULT_PATH" --quiet
-fi
+  echo "Creating vault at $VAULT_PATH ..."
+  mkdir -p "$VAULT_PATH"/{raw/assets,wiki}
 
-# --- Obsidian settings ---
+  # Template files
+  template() {
+    sed -e "s/{{DATE}}/$TODAY/g" \
+        -e "s|{{WIKI_PATH}}|$WIKI_PATH_PLACEHOLDER|g" \
+        -e "s/{{TITLE}}/$VAULT_NAME/g" \
+        "$FRAMEWORK_DIR/templates/$1" > "$2"
+  }
 
-mkdir -p "$VAULT_PATH/.obsidian"
-cat > "$VAULT_PATH/.obsidian/app.json" <<'JSON'
+  template index.md "$VAULT_PATH/index.md"
+  template log.md   "$VAULT_PATH/log.md"
+
+  # CLAUDE.md
+  if $EMBEDDED; then
+    echo "" >> "$REPO_ROOT/CLAUDE.md"
+    template claude-md-snippet.md /dev/stdout >> "$REPO_ROOT/CLAUDE.md"
+  else
+    template claude-md-snippet.md "$VAULT_PATH/CLAUDE.md"
+  fi
+
+  # Copy wiki skills
+  SKILLS_DST="$REPO_ROOT/.claude/skills"
+  mkdir -p "$SKILLS_DST"
+  for skill_dir in "$FRAMEWORK_DIR/.claude/skills"/wiki-*/; do
+    skill_name="$(basename "$skill_dir")"
+    if [[ -d "$skill_dir" ]]; then
+      cp -r "$skill_dir" "$SKILLS_DST/$skill_name"
+    fi
+  done
+
+  # Git init (standalone only)
+  if ! $EMBEDDED; then
+    git init "$VAULT_PATH" --quiet
+  fi
+
+  # Obsidian settings
+  mkdir -p "$VAULT_PATH/.obsidian"
+  cat > "$VAULT_PATH/.obsidian/app.json" <<'JSON'
 {
   "useMarkdownLinks": false,
   "newLinkFormat": "shortest",
@@ -117,16 +133,85 @@ cat > "$VAULT_PATH/.obsidian/app.json" <<'JSON'
 }
 JSON
 
-# --- Summary ---
+  echo ""
+  echo "=== Wiki vault created ==="
+  echo "  Vault path : $VAULT_PATH"
+  echo "  Vault name : $VAULT_NAME"
+  echo "  Directories: raw/  raw/assets/  wiki/"
+  echo "  Files      : index.md  log.md"
+  echo "  Skills     : wiki-init  wiki-ingest  wiki-query  wiki-lint"
+  if $EMBEDDED; then
+    echo "  CLAUDE.md  : wiki conventions appended to $REPO_ROOT/CLAUDE.md"
+  else
+    echo "  CLAUDE.md  : created at $VAULT_PATH/CLAUDE.md"
+    echo "  Git repo   : initialized"
+  fi
+  echo ""
+  echo "Next steps:"
+  echo "  1. Open '$VAULT_PATH' as an Obsidian vault"
+  echo "  2. Restart Claude Code (needed to detect new skills)"
+  echo "  3. Run /wiki-init to configure wiki structure"
+}
 
-echo ""
-echo "=== Wiki vault created ==="
-echo "  Vault path : $VAULT_PATH"
-echo "  Directories: raw/  raw/assets/  wiki/"
-echo "  Files      : index.md  log.md  CLAUDE.md"
-echo "  Skills     : wiki-init  wiki-ingest  wiki-query  wiki-lint"
-if ! $EMBEDDED; then
-  echo "  Git repo   : initialized"
-fi
-echo ""
-echo "Next step: open Claude Code in the project and run /wiki-init"
+# =============================================================================
+# UNINSTALL
+# =============================================================================
+
+cmd_uninstall() {
+  resolve_repo
+
+  echo "Uninstalling wiki from $REPO_ROOT ..."
+  echo ""
+
+  # Remove vault directory
+  if [[ -d "$VAULT_PATH" ]]; then
+    echo "  Removing vault directory: $VAULT_PATH"
+    rm -rf "$VAULT_PATH"
+  else
+    echo "  Vault directory not found: $VAULT_PATH (skipping)"
+  fi
+
+  # Remove wiki skills
+  local removed_skills=0
+  for skill in wiki-init wiki-ingest wiki-query wiki-lint; do
+    if [[ -d "$REPO_ROOT/.claude/skills/$skill" ]]; then
+      echo "  Removing skill: .claude/skills/$skill"
+      rm -rf "$REPO_ROOT/.claude/skills/$skill"
+      removed_skills=$((removed_skills + 1))
+    fi
+  done
+  if [[ $removed_skills -eq 0 ]]; then
+    echo "  No wiki skills found (skipping)"
+  fi
+
+  # Clean up empty .claude/skills dir
+  if [[ -d "$REPO_ROOT/.claude/skills" ]] && [[ -z "$(ls -A "$REPO_ROOT/.claude/skills")" ]]; then
+    rmdir "$REPO_ROOT/.claude/skills"
+    if [[ -d "$REPO_ROOT/.claude" ]] && [[ -z "$(ls -A "$REPO_ROOT/.claude")" ]]; then
+      rmdir "$REPO_ROOT/.claude"
+    fi
+  fi
+
+  # Strip wiki conventions from CLAUDE.md
+  if [[ -f "$REPO_ROOT/CLAUDE.md" ]]; then
+    if grep -q "BEGIN second-brain wiki conventions" "$REPO_ROOT/CLAUDE.md"; then
+      echo "  Stripping wiki conventions from CLAUDE.md"
+      sed -i '/<!-- BEGIN second-brain wiki conventions -->/,/<!-- END second-brain wiki conventions -->/d' "$REPO_ROOT/CLAUDE.md"
+      # Remove trailing blank lines
+      sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$REPO_ROOT/CLAUDE.md"
+    else
+      echo "  No wiki conventions markers found in CLAUDE.md (skipping)"
+    fi
+  fi
+
+  echo ""
+  echo "=== Wiki uninstalled ==="
+  echo "  Restart Claude Code to clear cached skills."
+}
+
+# --- Dispatch ---
+
+case "$SUBCOMMAND" in
+  init)      cmd_init ;;
+  uninstall) cmd_uninstall ;;
+esac
