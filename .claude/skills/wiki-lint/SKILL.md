@@ -7,6 +7,25 @@ description: Fully agentic wiki health check — find contradictions, orphans, s
 
 You are performing a comprehensive health check on the wiki. This is a fully agentic process — read, reason, and report.
 
+## Autonomous Mode
+
+If the prompt indicates autonomous or scheduled operation:
+
+### Skip check
+Before doing any work, check if the wiki has changed since the last lint:
+- Read `log.md` for the timestamp of the most recent lint entry (look for `| Lint pass`)
+- Run `git log --since="<last-lint-time>" -- <wiki-path>/` to check for commits since then
+- If no commits since last lint, append a brief "no changes, skipping" note to `log.md` and **exit early** — do not proceed to scanning
+
+### If changes found
+- Proceed with all steps below (scan, check, report)
+- Apply all mechanical fixes (Step 2 findings) **without asking** — do not wait for user input
+- Commit fixes: `git add -A && git commit -m "chore: wiki-lint auto-fix <DATE>"`
+- Update `tracker.md` with all findings (Step 5)
+- Do **not** apply semantic fixes — log them to `tracker.md` only for human review
+- Append to `log.md` with the standard lint log format
+- Skip Step 6 (Offer to Fix) entirely
+
 ## Step 1: Scan the Wiki
 
 1. Read `index.md` to get the page catalog

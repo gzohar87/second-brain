@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["click", "loguru"]
+# dependencies = ["click", "loguru", "pyyaml"]
 # ///
 """sb — CLI for LLM Wiki vaults (second-brain framework)."""
 
@@ -12,6 +12,7 @@ from datetime import date
 from pathlib import Path
 
 import click
+import yaml
 from loguru import logger
 
 FRAMEWORK_DIR = Path(__file__).resolve().parent.parent
@@ -99,6 +100,32 @@ WIKI_BEGIN = "<!-- BEGIN second-brain wiki conventions -->"
 WIKI_END = "<!-- END second-brain wiki conventions -->"
 
 
+def resolve_vault(path_str: str = ".") -> Path:
+    """Resolve a path to a vault root, checking both direct and linked."""
+    p = Path(path_str).resolve()
+    # Direct vault: has index.md and wiki/ or meta/
+    if (p / "index.md").exists() and ((p / "wiki").is_dir() or (p / "meta").is_dir()):
+        return p
+    # Linked wiki via CLAUDE.md
+    claude_md = p / "CLAUDE.md"
+    if claude_md.exists():
+        content = claude_md.read_text()
+        match = re.search(r"Wiki location: `([^`]+)`", content)
+        if match:
+            linked = Path(match.group(1).rstrip("/"))
+            if linked.is_dir():
+                return linked
+    raise click.ClickException(f"No vault found at '{p}'")
+
+
+def load_config(vault: Path) -> dict:
+    """Load config.yml from vault, returning empty dict if missing."""
+    config_file = vault / "config.yml"
+    if config_file.exists():
+        return yaml.safe_load(config_file.read_text()) or {}
+    return {}
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -142,6 +169,10 @@ def init(path: str):
         (vault / tmpl).write_text(content)
         logger.info(f"Created {tmpl}")
 
+    # Automation config
+    shutil.copy2(TEMPLATES_DIR / "config.yml", vault / "config.yml")
+    logger.info("Created config.yml")
+
     # Obsidian config
     obsidian_dir = vault / ".obsidian"
     obsidian_dir.mkdir(exist_ok=True)
@@ -151,7 +182,7 @@ def init(path: str):
     click.echo("=== Vault created ===")
     click.echo(f"  Path       : {vault}")
     click.echo(f"  Directories: raw/  raw/assets/  wiki/")
-    click.echo(f"  Files      : index.md  log.md  tracker.md")
+    click.echo(f"  Files      : index.md  log.md  tracker.md  config.yml")
     click.echo()
     click.echo("Next steps:")
     click.echo(f"  sb link {vault} --repo <your-repo>")
@@ -169,6 +200,11 @@ def update_vault(vault: Path):
         content = render_template("tracker.md", title=vault_name, wiki_path="wiki/")
         (vault / "tracker.md").write_text(content)
         logger.info("  Added tracker.md")
+
+    # Add config.yml if missing
+    if not (vault / "config.yml").exists():
+        shutil.copy2(TEMPLATES_DIR / "config.yml", vault / "config.yml")
+        logger.info("  Added config.yml")
 
     # Refresh .obsidian/app.json
     obsidian_dir = vault / ".obsidian"
@@ -339,6 +375,30 @@ def status():
         click.echo(f"  Broken links: {', '.join(sorted(broken))}")
     else:
         click.echo("  Broken links: none")
+
+    # 4. Automation config
+    config = load_config(vault)
+    auto = config.get("automation", {})
+    click.echo()
+    click.echo("=== Automation ===")
+    for name in ("distill", "lint"):
+        section = auto.get(name, {})
+        enabled = section.get("enabled", False)
+        schedule = section.get("schedule", "—")
+        status_str = f"enabled ({schedule})" if enabled else "disabled"
+        click.echo(f"  {name}: {status_str}")
+
+
+@cli.command()
+@click.argument("vault_path", default=".", type=click.Path(exists=True))
+def config(vault_path: str):
+    """Show vault automation config."""
+    vault = resolve_vault(vault_path)
+    config_file = vault / "config.yml"
+    if config_file.exists():
+        click.echo(config_file.read_text())
+    else:
+        click.echo("No config.yml found. Run 'sb update' to create one with defaults.")
 
 
 if __name__ == "__main__":

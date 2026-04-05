@@ -25,6 +25,32 @@ Pages created:
 Pages updated:
 - [[index]] — added tracker entry
 
+## [2026-04-05] created | Wiki automation — distill & lint scheduling
+
+Added scheduled automation for wiki maintenance:
+- `/wiki-distill` skill: reviews CC conversation history, extracts content into `raw/sessions/`, ingests into wiki
+- `/wiki-automate` skill: one-time setup to register cron schedules via `/schedule`
+- `/wiki-lint` autonomous mode: skip check + auto-fix without user interaction
+- `config.yml` per-vault automation config (added to vault scaffold)
+
+Pages created:
+- [[distill-workflow]] — concept page for the distill pipeline
+
+Pages updated:
+- [[index]] — added distill-workflow entry
+
+Skills created:
+- `.claude/skills/wiki-distill/SKILL.md`
+- `.claude/skills/wiki-automate/SKILL.md`
+
+Skills updated:
+- `.claude/skills/wiki-lint/SKILL.md` — added autonomous mode section
+
+Files updated:
+- `tools/sb` — config.yml in init/update, `config` command, pyyaml dep, resolve_vault/load_config helpers
+- `templates/config.yml` — new automation config template
+- `templates/global-claude-md-snippet.md` — added new skills and automation section
+
 ## [2026-04-05] updated | Removed embedded mode, updated ADRs
 
 Embedded mode concept removed from all documentation and skills. Wikis are now always standalone directories linked to repos via `sb link`. ADR-1 updated from "Bash over Python" to "Python with uv". ADR-5 (embedded mode) removed; ADR-6 renumbered to ADR-5.

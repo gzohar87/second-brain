@@ -13,8 +13,17 @@ Commands:
 - `sb unlink [--repo R]` — Remove wiki link from repo's CLAUDE.md
 - `sb install` — Install/update global skills and this section
 - `sb update` — Refresh everything (global + local if in linked repo)
+- `sb config [vault]` — Show vault automation config
 
-Skills (`/wiki-init`, `/wiki-ingest`, `/wiki-query`, `/wiki-lint`) are installed globally in `~/.claude/skills/`.
+Skills (`/wiki-init`, `/wiki-ingest`, `/wiki-query`, `/wiki-lint`, `/wiki-distill`, `/wiki-automate`) are installed globally in `~/.claude/skills/`.
+
+### Automation
+
+Vaults can opt into scheduled automation via `config.yml`:
+- **Distill** (`/wiki-distill`): Reviews recent Claude Code conversations, extracts wiki-worthy content into `raw/sessions/`, then ingests into wiki pages. Runs on a cron schedule (default: daily).
+- **Lint** (`/wiki-lint`): Runs mechanical checks and auto-fixes on a cron schedule (default: every 30 min). Skips if no changes since last lint. Semantic findings go to `tracker.md` for human review.
+
+Setup: run `/wiki-automate` in Claude Code to register schedules from `config.yml`.
 
 ### Wiki Conventions
 

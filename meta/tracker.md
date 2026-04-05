@@ -18,6 +18,7 @@ tags: []
 ## Backlog
 
 - [x] `done` `high` `sb status` command — show installed skills, linked wikis, vault health — output: [[design-decisions]]
+- [x] `done` `high` Scheduled automation — distill + lint skills, config.yml, /wiki-automate setup — output: [[distill-workflow]]
 - [ ] `todo` `high` CLI tests — integration tests for marker-based CLAUDE.md editing (link/unlink) — output: TBD
 - [ ] `todo` `medium` Bootstrap script + docs — single command to scaffold into new/existing repo, user-facing documentation — output: TBD
 - [ ] `todo` `medium` `--dry-run` flag for `link`/`unlink` commands — output: TBD

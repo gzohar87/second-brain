@@ -22,6 +22,7 @@ Catalog of all pages in the second-brain meta-wiki.
 - [[ingest-workflow]] — How sources are read, summarized, and cross-referenced
 - [[query-workflow]] — How knowledge is searched, synthesized, and optionally filed back
 - [[lint-workflow]] — How the wiki is scanned, checked, and repaired
+- [[distill-workflow]] — How conversations are captured and processed into wiki content
 - [[schema-design]] — How CLAUDE.md and skills structure the framework
 
 ## Development

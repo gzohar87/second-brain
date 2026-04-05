@@ -1,0 +1,12 @@
+# Vault automation preferences
+# Enable and configure scheduled processes for this vault.
+
+automation:
+  distill:
+    enabled: false
+    schedule: "0 7 * * *"      # cron — daily at 7am
+  lint:
+    enabled: false
+    schedule: "*/30 * * * *"   # cron — every 30 minutes
+    auto_fix: true             # apply mechanical fixes without prompting
+    auto_commit: true          # commit mechanical fixes

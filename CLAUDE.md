@@ -24,6 +24,10 @@ The `meta/` directory also dogfoods the wiki pattern that this framework provide
 2. **Always** update `meta/index.md` and `meta/log.md` when creating or modifying wiki pages
 3. Note contradictions explicitly — do not silently resolve conflicting information
 
+## Skills
+
+The canonical skill definitions live in `.claude/skills/` in this repo. The global copies in `~/.claude/skills/` are installed from here via `sb install`. **Always edit the repo copy first** — the global copy will be overwritten on next install.
+
 ## Repo Structure
 
 - `raw/` — Source material (read-only input)

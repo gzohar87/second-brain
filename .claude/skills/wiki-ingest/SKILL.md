@@ -25,7 +25,7 @@ Before writing anything, discuss with the user:
 
 Wait for user input before proceeding.
 
-## Step 3: Create Source Summary Page
+## Step 3: Create Organized Source Page
 
 Create a new page in the appropriate wiki subdirectory:
 - Filename: `wiki/<subdir>/<kebab-case-source-name>.md`
@@ -35,7 +35,7 @@ Frontmatter:
 ```yaml
 ---
 title: "<Source Title>"
-type: source-summary
+type: source
 created: <TODAY>
 updated: <TODAY>
 sources:
@@ -44,11 +44,14 @@ tags: [<relevant tags>]
 ---
 ```
 
-Content structure:
-- **Overview**: 2-3 sentence summary
-- **Key Claims**: bulleted list of the main points, each citing specific sections/pages of the source
-- **Relevance**: how this connects to existing wiki content
-- **Open Questions**: things raised by the source that aren't yet answered
+This page is the **organized, readable version** of the raw material — not a summary. Your goal is to preserve the substance while making it structured and clear.
+
+Guidelines:
+- **Organize by topic or theme** — let the structure emerge from the content, don't force a fixed template
+- **Remove only genuine noise** — filler words, repetition, off-topic tangents, verbal tics in transcripts
+- **Rephrase for clarity** but keep the actual content — specific examples, arguments, numbers, and nuance should survive
+- **Add `[[wikilinks]]` inline** where the text naturally references concepts or entities that have (or should have) their own pages
+- **When in doubt, keep it** — err on the side of preserving content rather than cutting it
 
 ## Step 4: Update Entity and Concept Pages
 
