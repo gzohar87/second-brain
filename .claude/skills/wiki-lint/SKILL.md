@@ -81,7 +81,20 @@ Structure the report by severity:
 
 For each finding: describe the issue, list the files involved, and suggest a specific fix.
 
-## Step 5: Offer to Fix
+## Step 5: Update Tasks Page
+
+After producing the report, update the wiki's `wiki/tasks.md` (or create it if it doesn't exist):
+
+1. **Read the current tasks page** to see what's already tracked
+2. **Remove stale items** — if a previously logged lint finding has been resolved (the issue no longer appears in this lint run), mark it `[x]` or remove it
+3. **Add new findings** under a `## Wiki Lint` section, organized by severity:
+   - Errors as `- [ ] **[ERROR]** <description> — <files involved>`
+   - Warnings as `- [ ] **[WARN]** <description> — <files involved>`
+   - Suggestions as `- [ ] **[SUGGEST]** <description> — <files involved>`
+4. **Don't duplicate** — if a finding is already tracked (same issue, same files), leave the existing item. Only add genuinely new findings
+5. **Update the date** in the tasks page frontmatter (`updated` field) to today
+
+## Step 6: Offer to Fix
 
 After presenting the report:
 - **Mechanical fixes** (broken index entries, missing frontmatter, orphan links): offer to fix these automatically

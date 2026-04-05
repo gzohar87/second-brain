@@ -2,5 +2,10 @@
   "useMarkdownLinks": false,
   "newFileLocation": "folder",
   "newFileFolderPath": "meta",
-  "attachmentFolderPath": "meta/assets"
+  "attachmentFolderPath": "meta/assets",
+  "userIgnoreFilters": [
+    "templates/",
+    "tools/",
+    "docs/"
+  ]
 }

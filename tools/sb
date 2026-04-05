@@ -129,7 +129,10 @@ cmd_init() {
   "useMarkdownLinks": false,
   "newLinkFormat": "shortest",
   "showFrontmatter": true,
-  "strictLineBreaks": true
+  "strictLineBreaks": true,
+  "userIgnoreFilters": [
+    "raw/"
+  ]
 }
 JSON
 
