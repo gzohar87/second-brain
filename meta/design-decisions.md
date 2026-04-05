@@ -9,9 +9,9 @@ tags: [meta, decisions, adr]
 
 # Design Decisions
 
-## ADR-1: Bash over Python for tooling
+## ADR-1: Python with uv for tooling
 
-All tooling scripts use bash. This keeps the framework zero-dependency — any machine with a shell can run it. No virtual environments, no package managers.
+The CLI (`tools/sb`) is a Python script using click for argument parsing and loguru for logging. It runs via `uv run --script`, which resolves dependencies on the fly — no virtual environment or install step required. Originally bash, rewritten in Python for richer argument handling and cleaner code.
 
 ## ADR-2: Dynamic wiki subdirs over predefined categories
 
@@ -25,10 +25,6 @@ Workflows live in separate skill files loaded on demand, keeping CLAUDE.md small
 
 Lint is performed by the agent reading and reasoning about pages, not by regex-based shell scripts. This enables semantic checks (e.g., stale cross-references) that scripts cannot do. See [[lint-workflow]].
 
-## ADR-5: Embedded mode as primary focus
-
-The framework is designed first for embedding inside existing projects. Standalone mode is supported but secondary. See [[architecture]].
-
-## ADR-6: Wikilinks over standard markdown links
+## ADR-5: Wikilinks over standard markdown links
 
 Internal references use `[[wikilinks]]` for brevity and tooling compatibility (Obsidian, Foam, etc.). Standard markdown links are reserved for external URLs.

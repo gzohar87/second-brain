@@ -62,7 +62,7 @@ For each significant entity (person, organization, tool, project) or concept (id
 
 - Add `[[wikilinks]]` from the new source summary to relevant existing pages
 - Add `[[wikilinks]]` from existing pages back to the new source summary where relevant
-- For embedded mode: if the source discusses code, add file-path references (e.g., `src/auth/handler.ts:45`)
+- For wikis linked to code repos: if the source discusses code, add file-path references (e.g., `src/auth/handler.ts:45`)
 
 ## Step 6: Evaluate Wiki Structure
 

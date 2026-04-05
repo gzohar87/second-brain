@@ -18,17 +18,14 @@ git clone <repo-url> second-brain
 
 ### 2. Bootstrap a vault
 
-**Standalone** — creates a new git repo for your wiki:
-
 ```bash
 second-brain/tools/sb init ~/my-wiki
 ```
 
-**Embedded** — adds a `<repo-name>-wiki/` folder inside an existing repo (override with `--name`):
+To link the wiki to an existing code repo:
 
 ```bash
-cd ~/my-project
-~/second-brain/tools/sb init --embedded
+second-brain/tools/sb link ~/my-wiki --repo ~/my-project
 ```
 
 ### 3. Restart Claude Code

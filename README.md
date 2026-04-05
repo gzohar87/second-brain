@@ -4,10 +4,7 @@ A framework for building LLM-maintained personal knowledge bases, based on [Karp
 
 Instead of RAG, the LLM incrementally builds and maintains a persistent wiki of interlinked markdown files. The wiki grows organically as you feed it information -- subdirectories are proposed dynamically based on domain, not predefined.
 
-## Deployment Modes
-
-- **Standalone** -- the wiki lives in its own git repo (like this one).
-- **Embedded** -- the wiki lives in a `<repo-name>-wiki/` directory inside a code repo (customizable via `--name`). In this mode, entries reference live code via file paths rather than copying snippets.
+Wikis are standalone directories that can be linked to any code repo via `sb link`. When linked, wiki pages can cite file paths in the repo for code-adjacent documentation.
 
 ## Operations
 
@@ -23,13 +20,8 @@ All operations are available as Claude Code skills:
 ## Quick Start
 
 ```bash
-# Standalone vault (own git repo)
-sb init ~/my-wiki
-
-# Embedded vault inside an existing repo
-cd ~/my-project
-sb init --embedded                  # creates my-project-wiki/
-sb init --embedded --name research  # creates research/
+sb init ~/my-wiki              # create a new wiki vault
+sb link ~/my-wiki --repo .     # link the current repo to it
 ```
 
 Then restart Claude Code and run `/wiki-init` to configure the wiki for your domain.
@@ -38,17 +30,9 @@ Then restart Claude Code and run `/wiki-init` to configure the wiki for your dom
 
 ```bash
 sb update                      # update skills and CLAUDE.md snippet to latest
-sb update --name research      # if you used a custom name
 ```
 
 Wiki content (raw/, wiki/, index.md, log.md) is never touched.
-
-## Uninstall
-
-```bash
-sb uninstall                   # removes vault, skills, and CLAUDE.md snippet
-sb uninstall --name research   # if you used a custom name
-```
 
 ## Viewer
 

@@ -11,15 +11,10 @@ You are initializing a new LLM Wiki vault. Follow these steps carefully.
 
 Ask the user:
 1. **What is this wiki for?** (domain, intent, what kind of knowledge will it track)
-2. **Deployment mode?**
-   - **Standalone**: the wiki is its own git repo (for personal knowledge, research, book notes)
-   - **Embedded**: the wiki lives in a named directory inside an existing code repo (default: `<repo-name>-wiki/`)
-
-If embedded, explore the repo structure to understand the codebase — read the top-level directory listing, any existing README, CLAUDE.md, and key config files.
 
 ## Step 2: Propose Wiki Structure
 
-Based on the domain and (if embedded) the repo structure, propose a set of subdirectories for `wiki/`. **Do not use generic defaults** — tailor the hierarchy to the specific domain.
+Based on the domain, propose a set of subdirectories for `wiki/`. **Do not use generic defaults** — tailor the hierarchy to the specific domain.
 
 Examples of domain-appropriate structures:
 - Research project: `papers/`, `theories/`, `methods/`, `people/`, `datasets/`
@@ -31,7 +26,6 @@ Present the proposal and **wait for user approval** before creating anything.
 
 ## Step 3: Create Vault Structure
 
-### Standalone mode
 1. Create the vault directory at the user-specified path
 2. Run `git init` inside it
 3. Create directories:
@@ -78,39 +72,9 @@ Present the proposal and **wait for user approval** before creating anything.
    ```
 6. Verify `tracker.md` exists (created by `sb init`). If missing, create it with frontmatter (`type: tracker`) and sections: `## Work Items`, `## Lint Findings`
 
-### Embedded mode
-Same as above, but:
-- Create everything under the vault directory (e.g., `<repo-name>-wiki/`) in the repo root
-- Do NOT run `git init` (the repo already has git)
-- The wiki path is the vault directory name
-
 ## Step 4: Set Up CLAUDE.md
 
-### Standalone mode
-Create a new `CLAUDE.md` at the vault root with the wiki conventions. Replace `{{WIKI_PATH}}` with the appropriate path (root-level `wiki/`).
-
-### Embedded mode
-Append the wiki conventions block to the existing `CLAUDE.md` (or create one if it doesn't exist). Replace `{{WIKI_PATH}}` with the vault directory path. The conventions block:
-
-```markdown
-# Wiki Conventions
-
-Wiki location: `<WIKI_PATH>`
-
-## Linking
-- Internal links: `[[page-name]]` (Obsidian wikilinks)
-- Code references: `src/auth/handler.ts:45` (file path with optional line number)
-
-## Page Format
-- YAML frontmatter: `title`, `type`, `created`, `updated`, `sources`, `tags`
-- Use `##` headers for sections
-- Filenames: `kebab-case.md`
-
-## Golden Rules
-1. **Never** modify anything in `raw/` — that directory is source-of-truth input
-2. **Always** update `index.md`, `log.md`, and `tracker.md` when creating or modifying wiki pages
-3. Note contradictions explicitly — do not silently resolve conflicting information
-```
+Create a new `CLAUDE.md` at the vault root with the wiki conventions. Replace `{{WIKI_PATH}}` with `wiki/`.
 
 ## Step 5: Configure Obsidian
 

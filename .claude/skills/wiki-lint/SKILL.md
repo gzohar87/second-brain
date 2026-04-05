@@ -41,7 +41,7 @@ Scan all pages for user-left review comments. These are inline notes left by the
 Surface each one with its location and content so it can be addressed.
 
 ### Stale file-path references
-For embedded (code-adjacent) wikis: code paths cited in wiki pages (e.g., `src/foo.ts:12`) where the **file no longer exists** in the repo. Scan for patterns like backtick-wrapped file paths and verify they exist.
+For wikis linked to code repos: code paths cited in wiki pages (e.g., `src/foo.ts:12`) where the **file no longer exists** in the repo. Scan for patterns like backtick-wrapped file paths and verify they exist.
 
 ## Step 3: Semantic Checks
 

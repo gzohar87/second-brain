@@ -13,13 +13,9 @@ tags: [meta, architecture]
 
 The framework organizes knowledge into three layers: raw sources (original materials), wiki (distilled pages), and schema (CLAUDE.md + skills). Each layer serves a distinct role in the pipeline from ingestion to retrieval.
 
-## Deployment Modes
+## Vault Model
 
-Two modes are supported: standalone (the framework is the repo) and embedded (the framework lives inside another project). Embedded mode is the primary focus — see [[design-decisions]].
-
-## Live Code References
-
-In embedded mode, wiki pages cite file paths rather than copying code. This keeps the wiki in sync with the codebase and avoids stale snippets.
+Wikis are always standalone directories with their own git repo. A wiki can be linked to a code repo via `sb link`, which injects wiki conventions into the repo's CLAUDE.md. When linked, wiki pages can cite file paths in the repo (e.g., `src/auth/handler.ts:45`) rather than copying code — keeping the wiki in sync with the codebase.
 
 ## Skills-Based Operation
 

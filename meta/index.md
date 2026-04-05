@@ -13,7 +13,7 @@ Catalog of all pages in the second-brain meta-wiki.
 
 ## Architecture & Design
 
-- [[architecture]] — Three-layer architecture and deployment modes
+- [[architecture]] — Three-layer architecture and vault model
 - [[design-decisions]] — Architectural decision records (ADRs)
 - [[roadmap]] — Development phases and future plans
 

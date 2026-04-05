@@ -19,7 +19,7 @@ The user's question is provided as an argument or in the conversation context. I
 2. Use grep/search across `wiki/` for additional relevant pages that might not be indexed
 3. Read `tracker.md` — especially for questions about current work, priorities, or status (e.g., "what am I working on?", "what's blocked?", "what should I do next?")
 4. Read the identified pages thoroughly
-5. If the wiki is in embedded mode, you can also reference the codebase directly for code-related questions
+5. If the wiki is linked to a code repo, you can also reference the codebase directly for code-related questions
 
 ## Step 3: Synthesize an Answer
 

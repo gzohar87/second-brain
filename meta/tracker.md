@@ -21,6 +21,18 @@ tags: []
 - [ ] `todo` `low` Marp slide generation — present wiki content as slides — output: TBD
 - [ ] `todo` `low` Dataview-style queries — dynamic indexes from frontmatter — output: TBD
 
+### Improvements
+
+- [ ] `todo` `high` `sb status` command — show installed skills, linked wikis, vault health — output: TBD
+- [ ] `todo` `high` CLI tests — integration tests for marker-based CLAUDE.md editing (link/unlink) — output: TBD
+- [ ] `todo` `medium` `--dry-run` flag for `link`/`unlink` commands — output: TBD
+- [ ] `todo` `medium` Log rotation strategy — `log.md` grows unbounded, needs archival — output: [[design-decisions]]
+- [ ] `todo` `medium` Index scalability — flat `index.md` won't scale past 50+ pages — output: [[design-decisions]]
+- [ ] `todo` `medium` Tag consumption — frontmatter `tags` field exists but nothing queries them — output: TBD
+- [ ] `todo` `low` More user docs — troubleshooting, raw/ content examples, skill reference — output: TBD
+- [ ] `todo` `low` Obsidian coupling — commit to hard requirement or provide markdown link fallback — output: [[design-decisions]]
+- [ ] `todo` `low` Skill scoping — per-repo visibility instead of global-only — output: [[design-decisions]]
+
 ## Lint Findings
 
 <!-- Populated by /wiki-lint -->
