@@ -76,6 +76,7 @@ Present the proposal and **wait for user approval** before creating anything.
    Vault created for: <domain description>
    Structure: <list approved subdirs>
    ```
+6. Verify `tracker.md` exists (created by `sb init`). If missing, create it with frontmatter (`type: tracker`) and sections: `## Session Log`, `## Work Items`, `## Lint Findings`
 
 ### Embedded mode
 Same as above, but:
@@ -107,7 +108,7 @@ Wiki location: `<WIKI_PATH>`
 
 ## Golden Rules
 1. **Never** modify anything in `raw/` — that directory is source-of-truth input
-2. **Always** update `index.md` and `log.md` when creating or modifying wiki pages
+2. **Always** update `index.md`, `log.md`, and `tracker.md` when creating or modifying wiki pages
 3. Note contradictions explicitly — do not silently resolve conflicting information
 ```
 

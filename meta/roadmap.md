@@ -17,9 +17,13 @@ Directory structure, CLAUDE.md, basic wiki layout, and initial tooling scripts.
 
 Ingest, query, and lint skills extracted into standalone skill files.
 
-## Phase 3: Meta-wiki buildout (in progress)
+## Phase 3: Meta-wiki buildout (done)
 
 Internal documentation of the framework itself — architecture, decisions, concepts, and this roadmap.
+
+## Phase 3.5: Work tracker (done)
+
+`tracker.md` as a first-class vault file for tracking work items, session history, and lint findings.
 
 ## Phase 4: Bootstrap script + docs
 

@@ -13,6 +13,8 @@ The user specifies a file in `raw/` (or has just added one). Read the source doc
 
 If no specific file is mentioned, list the contents of `raw/` and ask the user which source to ingest. You can also check `log.md` to see which sources have already been ingested to avoid duplicates.
 
+Also read `tracker.md` for session context — it may indicate which source the user intended to ingest or what work item this relates to.
+
 ## Step 2: Discuss Key Takeaways
 
 Before writing anything, discuss with the user:
@@ -99,3 +101,10 @@ Show the user a summary:
 - Files updated (what changed)
 - Contradictions found (if any)
 - Suggested follow-ups: related sources to seek, questions to investigate
+
+## Step 10: Suggest Tracker Updates
+
+Check `tracker.md` for work items related to the ingested source:
+- If any items reference this source or topic, suggest updating their status
+- If the ingestion reveals new work (follow-up research, contradictions to resolve, pages to create), suggest adding items to the tracker
+- Append a session log entry to `tracker.md` noting what was ingested

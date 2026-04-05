@@ -2,11 +2,13 @@
 
 Framework for building LLM-maintained personal wikis. The LLM ingests raw material, distills it into interlinked wiki pages, and keeps everything organized and up to date.
 
-## Wiki Conventions
+## Wiki as Project Knowledge Base
 
 Wiki location: `meta/`
 
-The `meta/` directory uses the wiki pattern to document the framework's own development (dogfooding).
+The `meta/` directory is the project's knowledge base — it documents architecture, design decisions, workflows, and concepts that aren't obvious from reading the code alone. Before exploring the repo to understand how something works, check `meta/index.md` for a map of available pages. The wiki is maintained alongside the code and should be your first stop for understanding the project's design and conventions.
+
+The `meta/` directory also dogfoods the wiki pattern that this framework provides to other projects.
 
 ### Linking
 - Internal links: `[[page-name]]` (Obsidian wikilinks)

@@ -100,6 +100,7 @@ cmd_init() {
 
   template index.md "$VAULT_PATH/index.md"
   template log.md   "$VAULT_PATH/log.md"
+  template tracker.md "$VAULT_PATH/tracker.md"
 
   # CLAUDE.md
   if $EMBEDDED; then
@@ -143,7 +144,7 @@ JSON
   echo "  Vault path : $VAULT_PATH"
   echo "  Vault name : $VAULT_NAME"
   echo "  Directories: raw/  raw/assets/  wiki/"
-  echo "  Files      : index.md  log.md"
+  echo "  Files      : index.md  log.md  tracker.md"
   echo "  Skills     : wiki-init  wiki-ingest  wiki-query  wiki-lint"
   if $EMBEDDED; then
     echo "  CLAUDE.md  : wiki conventions appended to $REPO_ROOT/CLAUDE.md"
@@ -246,6 +247,12 @@ cmd_update() {
         -e "s/{{TITLE}}/$VAULT_NAME/g" \
         "$FRAMEWORK_DIR/templates/$1"
   }
+
+  # Add tracker.md to existing vaults (non-destructive)
+  if [[ ! -f "$VAULT_PATH/tracker.md" ]]; then
+    template tracker.md > "$VAULT_PATH/tracker.md"
+    echo "  Added tracker.md (new in this version)"
+  fi
 
   if [[ -f "$REPO_ROOT/CLAUDE.md" ]] && grep -q "BEGIN second-brain wiki conventions" "$REPO_ROOT/CLAUDE.md"; then
     # Strip old snippet, append new one

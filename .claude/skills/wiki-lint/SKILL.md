@@ -13,6 +13,7 @@ You are performing a comprehensive health check on the wiki. This is a fully age
 2. List all `.md` files in `wiki/` recursively
 3. Read each wiki page (if the wiki is very large — over ~50 pages — read a representative sample and flag that a full audit wasn't done)
 4. Also read `log.md` for recent activity context
+5. Read `tracker.md` for current work context and previous lint findings
 
 ## Step 2: Mechanical Checks
 
@@ -90,18 +91,19 @@ Structure the report by severity:
 
 For each finding: describe the issue, list the files involved, and suggest a specific fix.
 
-## Step 5: Update Tasks Page
+## Step 5: Update Tracker
 
-After producing the report, update the wiki's `wiki/tasks.md` (or create it if it doesn't exist):
+After producing the report, update the vault's `tracker.md` (the `## Lint Findings` section):
 
-1. **Read the current tasks page** to see what's already tracked
-2. **Remove stale items** — if a previously logged lint finding has been resolved (the issue no longer appears in this lint run), mark it `[x]` or remove it
-3. **Add new findings** under a `## Wiki Lint` section, organized by severity:
-   - Errors as `- [ ] **[ERROR]** <description> — <files involved>`
-   - Warnings as `- [ ] **[WARN]** <description> — <files involved>`
-   - Suggestions as `- [ ] **[SUGGEST]** <description> — <files involved>`
-4. **Don't duplicate** — if a finding is already tracked (same issue, same files), leave the existing item. Only add genuinely new findings
-5. **Update the date** in the tasks page frontmatter (`updated` field) to today
+1. **Read `tracker.md`** to see current lint findings
+2. **Check for legacy `wiki/tasks.md`** — if it exists, migrate any open items to `tracker.md` under `## Lint Findings` and suggest deleting the old file
+3. **Remove resolved items** — if a previously logged finding no longer appears in this lint run, mark it `[x]`
+4. **Add new findings** under `## Lint Findings`:
+   - `- [ ] \`error\` <description> — <files involved>`
+   - `- [ ] \`warn\` <description> — <files involved>`
+   - `- [ ] \`suggest\` <description> — <files involved>`
+5. **Don't duplicate** — if a finding is already tracked (same issue, same files), leave the existing item
+6. **Update** the `updated` field in `tracker.md` frontmatter to today
 
 ## Step 6: Offer to Fix
 
