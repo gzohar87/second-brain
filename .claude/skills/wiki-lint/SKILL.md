@@ -57,6 +57,15 @@ Pages covering **related topics** that should link to each other but don't. Look
 ### Synthesis gaps
 Areas where **multiple sources** touch on a topic but no comparison or synthesis page exists to tie them together.
 
+### Wiki structure
+Evaluate whether the overall directory structure and page grouping still make sense:
+- Are subdirectories becoming too large or too small? Should any be split or merged?
+- Are pages grouped logically — do related pages live near each other?
+- Would the wiki look well-organized in Obsidian's graph view — meaningful clusters rather than isolated nodes or one tangled blob?
+- Have new natural categories emerged that don't have their own subdirectory yet?
+
+If the structure needs reorganization, include specific proposals in the report.
+
 ## Step 4: Produce Report
 
 Structure the report by severity:

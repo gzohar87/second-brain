@@ -62,11 +62,21 @@ For each significant entity (person, organization, tool, project) or concept (id
 - Add `[[wikilinks]]` from existing pages back to the new source summary where relevant
 - For embedded mode: if the source discusses code, add file-path references (e.g., `src/auth/handler.ts:45`)
 
-## Step 6: Update index.md
+## Step 6: Evaluate Wiki Structure
+
+Before updating the index, step back and consider the wiki's overall organization:
+
+- **Does the current directory structure still make sense?** As content grows, categories that once made sense may need splitting, merging, or renaming. If a subdirectory is becoming a dumping ground or a new natural grouping has emerged, propose reorganizing.
+- **Are pages grouped logically?** Related pages should be near each other in the hierarchy. If you're creating a page that doesn't fit cleanly into any existing group, that's a signal the structure may need evolving.
+- **Think about how this looks in Obsidian's graph view** — pages should form meaningful clusters. Isolated nodes or one giant blob both indicate structural problems.
+
+If you think the structure needs changes, propose them to the user before proceeding.
+
+## Step 7: Update index.md
 
 Add entries for all newly created pages. Maintain the existing organizational structure. Each entry: `- [[page-name]] — Brief one-line description`
 
-## Step 7: Append to log.md
+## Step 8: Append to log.md
 
 ```markdown
 ## [<TODAY>] created | Ingested: <Source Title>
@@ -82,7 +92,7 @@ Pages updated:
 - [[existing-page-2]] — noted contradiction with source on Y
 ```
 
-## Step 8: Report
+## Step 9: Report
 
 Show the user a summary:
 - Files created (with links)
