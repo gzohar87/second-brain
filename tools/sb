@@ -1,281 +1,257 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["click", "loguru"]
+# ///
+"""sb — CLI for LLM Wiki vaults (second-brain framework)."""
 
-# sb — bootstrap script for LLM Wiki vaults
-# Usage:
-#   sb init <path>                              Standalone vault (new git repo)
-#   sb init --embedded [--name NAME] [path]     Embedded vault inside existing repo
-#   sb update [--name NAME] [path]              Update skills and CLAUDE.md snippet to latest
-#   sb uninstall [--name NAME] [path]           Remove embedded vault and skills
+import json
+import re
+import shutil
+from datetime import date
+from pathlib import Path
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRAMEWORK_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-TODAY="$(date +%Y-%m-%d)"
+import click
+from loguru import logger
 
-usage() {
-  cat <<EOF
-Usage:
-  sb init <path>                              Create a standalone wiki vault
-  sb init --embedded [--name NAME] [path]     Create an embedded wiki inside an existing repo
-  sb update [--name NAME] [path]              Update skills and CLAUDE.md snippet to latest version
-  sb uninstall [--name NAME] [path]           Remove embedded vault, skills, and CLAUDE.md snippet
+FRAMEWORK_DIR = Path(__file__).resolve().parent.parent
+TEMPLATES_DIR = FRAMEWORK_DIR / "templates"
+SKILLS_SRC = FRAMEWORK_DIR / ".claude" / "skills"
+GLOBAL_SKILLS_DST = Path.home() / ".claude" / "skills"
+GLOBAL_CLAUDE_MD = Path.home() / ".claude" / "CLAUDE.md"
+TODAY = date.today().isoformat()
 
-Options:
-  --embedded    Create vault inside an existing repo (default: current dir)
-  --name NAME   Vault directory name (default: <repo-name>-wiki)
-EOF
-  exit 1
+OBSIDIAN_CONFIG = {
+    "useMarkdownLinks": False,
+    "newLinkFormat": "shortest",
+    "showFrontmatter": True,
+    "strictLineBreaks": True,
+    "userIgnoreFilters": ["raw/"],
 }
 
-die() { echo "Error: $*" >&2; exit 1; }
+def render_global_claude_section() -> str:
+    """Render the global CLAUDE.md section from its template."""
+    text = (TEMPLATES_DIR / "global-claude-md-snippet.md").read_text()
+    return text.replace("{{FRAMEWORK_DIR}}", str(FRAMEWORK_DIR)).rstrip("\n")
 
-# --- Argument parsing ---
 
-[[ $# -ge 1 ]] || usage
-SUBCOMMAND="$1"; shift
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-case "$SUBCOMMAND" in
-  init|update|uninstall) ;;
-  *) die "Unknown subcommand '$SUBCOMMAND'. Use 'init', 'update', or 'uninstall'." ;;
-esac
 
-EMBEDDED=false
-TARGET_PATH=""
-VAULT_NAME=""
+def strip_section(content: str, begin_marker: str, end_marker: str) -> str:
+    """Remove everything between begin_marker and end_marker lines (inclusive)."""
+    pattern = re.compile(
+        rf"^[ \t]*{re.escape(begin_marker)}.*?{re.escape(end_marker)}[ \t]*$",
+        re.MULTILINE | re.DOTALL,
+    )
+    return pattern.sub("", content)
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --embedded) EMBEDDED=true; shift ;;
-    --name) [[ $# -ge 2 ]] || die "--name requires a value"; VAULT_NAME="$2"; shift 2 ;;
-    -*) die "Unknown option '$1'" ;;
-    *)
-      [[ -z "$TARGET_PATH" ]] || die "Unexpected argument '$1'"
-      TARGET_PATH="$1"; shift ;;
-  esac
-done
 
-# --- Resolve repo root and vault name ---
+def upsert_section(filepath: Path, begin_marker: str, end_marker: str, new_content: str):
+    """Strip old section if present, append new section."""
+    if filepath.exists():
+        content = filepath.read_text()
+        content = strip_section(content, begin_marker, end_marker)
+    else:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        content = ""
+    content = content.rstrip("\n")
+    if content:
+        content += "\n\n"
+    content += new_content + "\n"
+    filepath.write_text(content)
 
-resolve_repo() {
-  REPO_ROOT="${TARGET_PATH:-.}"
-  REPO_ROOT="$(cd "$REPO_ROOT" 2>/dev/null && pwd)" || die "Path '$TARGET_PATH' does not exist"
-  [[ -d "$REPO_ROOT/.git" ]] || die "'$REPO_ROOT' is not a git repository"
 
-  if [[ -z "$VAULT_NAME" ]]; then
-    VAULT_NAME="$(basename "$REPO_ROOT")-wiki"
-  fi
+def render_template(template_name: str, title: str, wiki_path: str) -> str:
+    """Read a template and substitute placeholders."""
+    text = (TEMPLATES_DIR / template_name).read_text()
+    return (
+        text.replace("{{DATE}}", TODAY)
+        .replace("{{TITLE}}", title)
+        .replace("{{WIKI_PATH}}", wiki_path)
+    )
 
-  VAULT_PATH="$REPO_ROOT/$VAULT_NAME"
-}
 
-# =============================================================================
-# INIT
-# =============================================================================
+def install_skills():
+    """Copy wiki skills to the global skills directory."""
+    GLOBAL_SKILLS_DST.mkdir(parents=True, exist_ok=True)
+    installed = []
+    for skill_dir in sorted(SKILLS_SRC.glob("wiki-*")):
+        if skill_dir.is_dir():
+            dst = GLOBAL_SKILLS_DST / skill_dir.name
+            if dst.exists():
+                shutil.rmtree(dst)
+            shutil.copytree(skill_dir, dst)
+            installed.append(skill_dir.name)
+            logger.info(f"Installed skill: {skill_dir.name}")
+    return installed
 
-cmd_init() {
-  if $EMBEDDED; then
-    resolve_repo
-    WIKI_PATH_PLACEHOLDER="$VAULT_NAME/"
-  else
-    [[ -n "$TARGET_PATH" ]] || die "Standalone mode requires a <path> argument"
-    TARGET_PATH="$(mkdir -p "$TARGET_PATH" && cd "$TARGET_PATH" && pwd)"
-    VAULT_PATH="$TARGET_PATH"
-    VAULT_NAME="$(basename "$TARGET_PATH")"
-    REPO_ROOT="$TARGET_PATH"
-    WIKI_PATH_PLACEHOLDER="wiki/"
-  fi
 
-  [[ ! -d "$VAULT_PATH/wiki" ]] || die "Vault already exists at '$VAULT_PATH'"
+def install_global_claude_md():
+    """Manage the sb section in ~/.claude/CLAUDE.md."""
+    upsert_section(GLOBAL_CLAUDE_MD, "<!-- BEGIN sb -->", "<!-- END sb -->", render_global_claude_section())
+    logger.info(f"Updated {GLOBAL_CLAUDE_MD}")
 
-  echo "Creating vault at $VAULT_PATH ..."
-  mkdir -p "$VAULT_PATH"/{raw/assets,wiki}
 
-  # Template files
-  template() {
-    sed -e "s/{{DATE}}/$TODAY/g" \
-        -e "s|{{WIKI_PATH}}|$WIKI_PATH_PLACEHOLDER|g" \
-        -e "s/{{TITLE}}/$VAULT_NAME/g" \
-        "$FRAMEWORK_DIR/templates/$1" > "$2"
-  }
+WIKI_BEGIN = "<!-- BEGIN second-brain wiki conventions -->"
+WIKI_END = "<!-- END second-brain wiki conventions -->"
 
-  template index.md "$VAULT_PATH/index.md"
-  template log.md   "$VAULT_PATH/log.md"
-  template tracker.md "$VAULT_PATH/tracker.md"
 
-  # CLAUDE.md
-  if $EMBEDDED; then
-    echo "" >> "$REPO_ROOT/CLAUDE.md"
-    template claude-md-snippet.md /dev/stdout >> "$REPO_ROOT/CLAUDE.md"
-  else
-    template claude-md-snippet.md "$VAULT_PATH/CLAUDE.md"
-  fi
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
-  # Copy wiki skills
-  SKILLS_DST="$REPO_ROOT/.claude/skills"
-  mkdir -p "$SKILLS_DST"
-  for skill_dir in "$FRAMEWORK_DIR/.claude/skills"/wiki-*/; do
-    skill_name="$(basename "$skill_dir")"
-    if [[ -d "$skill_dir" ]]; then
-      cp -r "$skill_dir" "$SKILLS_DST/$skill_name"
-    fi
-  done
 
-  # Git init (standalone only)
-  if ! $EMBEDDED; then
-    git init "$VAULT_PATH" --quiet
-  fi
+@click.group()
+def cli():
+    """sb — CLI for LLM Wiki vaults."""
+    pass
 
-  # Obsidian settings
-  mkdir -p "$VAULT_PATH/.obsidian"
-  cat > "$VAULT_PATH/.obsidian/app.json" <<'JSON'
-{
-  "useMarkdownLinks": false,
-  "newLinkFormat": "shortest",
-  "showFrontmatter": true,
-  "strictLineBreaks": true,
-  "userIgnoreFilters": [
-    "raw/"
-  ]
-}
-JSON
 
-  echo ""
-  echo "=== Wiki vault created ==="
-  echo "  Vault path : $VAULT_PATH"
-  echo "  Vault name : $VAULT_NAME"
-  echo "  Directories: raw/  raw/assets/  wiki/"
-  echo "  Files      : index.md  log.md  tracker.md"
-  echo "  Skills     : wiki-init  wiki-ingest  wiki-query  wiki-lint"
-  if $EMBEDDED; then
-    echo "  CLAUDE.md  : wiki conventions appended to $REPO_ROOT/CLAUDE.md"
-  else
-    echo "  CLAUDE.md  : created at $VAULT_PATH/CLAUDE.md"
-    echo "  Git repo   : initialized"
-  fi
-  echo ""
-  echo "Next steps:"
-  echo "  1. Open '$VAULT_PATH' as an Obsidian vault"
-  echo "  2. Restart Claude Code (needed to detect new skills)"
-  echo "  3. Run /wiki-init to configure wiki structure"
-}
+@cli.command()
+def install():
+    """Install skills globally and update ~/.claude/CLAUDE.md."""
+    installed = install_skills()
+    install_global_claude_md()
+    click.echo()
+    click.echo("=== Installed ===")
+    click.echo(f"  Skills: {', '.join(installed)}")
+    click.echo(f"  CLAUDE.md: {GLOBAL_CLAUDE_MD}")
+    click.echo("  Restart Claude Code to detect changes.")
 
-# =============================================================================
-# UNINSTALL
-# =============================================================================
 
-cmd_uninstall() {
-  resolve_repo
+@cli.command()
+@click.argument("path", type=click.Path())
+def init(path: str):
+    """Create a new wiki vault at PATH."""
+    vault = Path(path).resolve()
+    vault_name = vault.name
 
-  echo "Uninstalling wiki from $REPO_ROOT ..."
-  echo ""
+    if (vault / "wiki").exists():
+        raise click.ClickException(f"Vault already exists at '{vault}'")
 
-  # Remove vault directory
-  if [[ -d "$VAULT_PATH" ]]; then
-    echo "  Removing vault directory: $VAULT_PATH"
-    rm -rf "$VAULT_PATH"
-  else
-    echo "  Vault directory not found: $VAULT_PATH (skipping)"
-  fi
+    # Create directories
+    (vault / "raw" / "assets").mkdir(parents=True, exist_ok=True)
+    (vault / "wiki").mkdir(parents=True, exist_ok=True)
 
-  # Remove wiki skills
-  local removed_skills=0
-  for skill in wiki-init wiki-ingest wiki-query wiki-lint; do
-    if [[ -d "$REPO_ROOT/.claude/skills/$skill" ]]; then
-      echo "  Removing skill: .claude/skills/$skill"
-      rm -rf "$REPO_ROOT/.claude/skills/$skill"
-      removed_skills=$((removed_skills + 1))
-    fi
-  done
-  if [[ $removed_skills -eq 0 ]]; then
-    echo "  No wiki skills found (skipping)"
-  fi
+    # Template files
+    for tmpl in ("index.md", "log.md", "tracker.md"):
+        content = render_template(tmpl, title=vault_name, wiki_path="wiki/")
+        (vault / tmpl).write_text(content)
+        logger.info(f"Created {tmpl}")
 
-  # Clean up empty .claude/skills dir
-  if [[ -d "$REPO_ROOT/.claude/skills" ]] && [[ -z "$(ls -A "$REPO_ROOT/.claude/skills")" ]]; then
-    rmdir "$REPO_ROOT/.claude/skills"
-    if [[ -d "$REPO_ROOT/.claude" ]] && [[ -z "$(ls -A "$REPO_ROOT/.claude")" ]]; then
-      rmdir "$REPO_ROOT/.claude"
-    fi
-  fi
+    # Obsidian config
+    obsidian_dir = vault / ".obsidian"
+    obsidian_dir.mkdir(exist_ok=True)
+    (obsidian_dir / "app.json").write_text(json.dumps(OBSIDIAN_CONFIG, indent=2) + "\n")
 
-  # Strip wiki conventions from CLAUDE.md
-  if [[ -f "$REPO_ROOT/CLAUDE.md" ]]; then
-    if grep -q "BEGIN second-brain wiki conventions" "$REPO_ROOT/CLAUDE.md"; then
-      echo "  Stripping wiki conventions from CLAUDE.md"
-      sed -i '/<!-- BEGIN second-brain wiki conventions -->/,/<!-- END second-brain wiki conventions -->/d' "$REPO_ROOT/CLAUDE.md"
-      # Remove trailing blank lines
-      sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$REPO_ROOT/CLAUDE.md"
-    else
-      echo "  No wiki conventions markers found in CLAUDE.md (skipping)"
-    fi
-  fi
+    click.echo()
+    click.echo("=== Vault created ===")
+    click.echo(f"  Path       : {vault}")
+    click.echo(f"  Directories: raw/  raw/assets/  wiki/")
+    click.echo(f"  Files      : index.md  log.md  tracker.md")
+    click.echo()
+    click.echo("Next steps:")
+    click.echo(f"  sb link {vault} --repo <your-repo>")
 
-  echo ""
-  echo "=== Wiki uninstalled ==="
-  echo "  Restart Claude Code to clear cached skills."
-}
 
-# =============================================================================
-# UPDATE
-# =============================================================================
+def update_vault(vault: Path):
+    """Apply vault-level updates: add missing scaffold files, refresh config."""
+    if not (vault / "index.md").exists() or not (vault / "wiki").is_dir():
+        return
+    vault_name = vault.name
+    logger.info(f"Updating vault: {vault}")
 
-cmd_update() {
-  resolve_repo
+    # Add tracker.md if missing
+    if not (vault / "tracker.md").exists():
+        content = render_template("tracker.md", title=vault_name, wiki_path="wiki/")
+        (vault / "tracker.md").write_text(content)
+        logger.info("  Added tracker.md")
 
-  echo "Updating wiki in $REPO_ROOT to latest version ..."
-  echo ""
+    # Refresh .obsidian/app.json
+    obsidian_dir = vault / ".obsidian"
+    obsidian_dir.mkdir(exist_ok=True)
+    (obsidian_dir / "app.json").write_text(json.dumps(OBSIDIAN_CONFIG, indent=2) + "\n")
 
-  # Update skills
-  SKILLS_DST="$REPO_ROOT/.claude/skills"
-  mkdir -p "$SKILLS_DST"
-  local updated_skills=0
-  for skill_dir in "$FRAMEWORK_DIR/.claude/skills"/wiki-*/; do
-    skill_name="$(basename "$skill_dir")"
-    if [[ -d "$skill_dir" ]]; then
-      rm -rf "$SKILLS_DST/$skill_name"
-      cp -r "$skill_dir" "$SKILLS_DST/$skill_name"
-      echo "  Updated skill: $skill_name"
-      updated_skills=$((updated_skills + 1))
-    fi
-  done
 
-  # Update CLAUDE.md snippet
-  WIKI_PATH_PLACEHOLDER="$VAULT_NAME/"
-  template() {
-    sed -e "s/{{DATE}}/$TODAY/g" \
-        -e "s|{{WIKI_PATH}}|$WIKI_PATH_PLACEHOLDER|g" \
-        -e "s/{{TITLE}}/$VAULT_NAME/g" \
-        "$FRAMEWORK_DIR/templates/$1"
-  }
+@cli.command()
+def update():
+    """Refresh global install and update linked repo if applicable."""
+    # 1. Global refresh
+    installed = install_skills()
+    install_global_claude_md()
+    click.echo(f"  Skills refreshed: {', '.join(installed)}")
 
-  # Add tracker.md to existing vaults (non-destructive)
-  if [[ ! -f "$VAULT_PATH/tracker.md" ]]; then
-    template tracker.md > "$VAULT_PATH/tracker.md"
-    echo "  Added tracker.md (new in this version)"
-  fi
+    # 2. If cwd has a wiki link, refresh the snippet and update the linked vault
+    cwd = Path.cwd()
+    claude_md = cwd / "CLAUDE.md"
+    if claude_md.exists():
+        content = claude_md.read_text()
+        if WIKI_BEGIN in content:
+            match = re.search(r"Wiki location: `([^`]+)`", content)
+            if match:
+                wiki_path = match.group(1)
+                vault_name = Path(wiki_path.rstrip("/")).name
+                snippet = render_template("claude-md-snippet.md", title=vault_name, wiki_path=wiki_path)
+                upsert_section(claude_md, WIKI_BEGIN, WIKI_END, snippet)
+                logger.info(f"Refreshed wiki snippet in {claude_md}")
+                # Update the linked vault itself
+                vault = Path(wiki_path.rstrip("/"))
+                if vault.is_dir():
+                    update_vault(vault)
 
-  if [[ -f "$REPO_ROOT/CLAUDE.md" ]] && grep -q "BEGIN second-brain wiki conventions" "$REPO_ROOT/CLAUDE.md"; then
-    # Strip old snippet, append new one
-    sed -i '/<!-- BEGIN second-brain wiki conventions -->/,/<!-- END second-brain wiki conventions -->/d' "$REPO_ROOT/CLAUDE.md"
-    sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$REPO_ROOT/CLAUDE.md"
-    echo "" >> "$REPO_ROOT/CLAUDE.md"
-    template claude-md-snippet.md >> "$REPO_ROOT/CLAUDE.md"
-    echo "  Updated CLAUDE.md wiki conventions"
-  else
-    echo "  No wiki conventions markers found in CLAUDE.md (skipping)"
-  fi
+    # 3. If cwd is itself a vault, update it directly
+    if (cwd / "index.md").exists() and (cwd / "wiki").is_dir():
+        update_vault(cwd)
 
-  echo ""
-  echo "=== Wiki updated ==="
-  echo "  Skills updated: $updated_skills"
-  echo "  Wiki content: untouched"
-  echo "  Restart Claude Code to pick up changes."
-}
+    click.echo()
+    click.echo("=== Updated ===")
+    click.echo("  Restart Claude Code to pick up changes.")
 
-# --- Dispatch ---
 
-case "$SUBCOMMAND" in
-  init)      cmd_init ;;
-  update)    cmd_update ;;
-  uninstall) cmd_uninstall ;;
-esac
+@cli.command()
+@click.argument("wiki_path", type=click.Path(exists=True))
+@click.option("--repo", default=".", type=click.Path(exists=True), help="Target repo (default: cwd)")
+def link(wiki_path: str, repo: str):
+    """Point a repo at an external wiki vault."""
+    wiki = Path(wiki_path).resolve()
+    repo_root = Path(repo).resolve()
+
+    if not (wiki / "index.md").exists():
+        raise click.ClickException(f"'{wiki}' doesn't look like a wiki (no index.md)")
+
+    claude_md = repo_root / "CLAUDE.md"
+    if claude_md.exists() and WIKI_BEGIN in claude_md.read_text():
+        raise click.ClickException("Repo already linked to a wiki. Run 'sb unlink' first.")
+
+    vault_name = wiki.name
+    snippet = render_template("claude-md-snippet.md", title=vault_name, wiki_path=f"{wiki}/")
+    upsert_section(claude_md, WIKI_BEGIN, WIKI_END, snippet)
+
+    click.echo(f"Linked: {repo_root} → {wiki}")
+
+
+@cli.command()
+@click.option("--repo", default=".", type=click.Path(exists=True), help="Target repo (default: cwd)")
+def unlink(repo: str):
+    """Remove wiki link from a repo's CLAUDE.md."""
+    repo_root = Path(repo).resolve()
+    claude_md = repo_root / "CLAUDE.md"
+
+    if not claude_md.exists():
+        raise click.ClickException("No CLAUDE.md found")
+
+    content = claude_md.read_text()
+    if WIKI_BEGIN not in content:
+        raise click.ClickException("No wiki link found in CLAUDE.md")
+
+    content = strip_section(content, WIKI_BEGIN, WIKI_END).strip() + "\n"
+    claude_md.write_text(content)
+
+    click.echo(f"Unlinked wiki from {repo_root}")
+
+
+if __name__ == "__main__":
+    cli()
