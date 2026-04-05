@@ -27,4 +27,4 @@ Catalog of all pages in the second-brain meta-wiki.
 ## Development
 
 - [[log]] — Chronological record of wiki changes
-- [[tracker]] — Work items, session history, and lint findings
+- [[tracker]] — Work items and lint findings

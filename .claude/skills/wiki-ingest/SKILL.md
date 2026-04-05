@@ -107,4 +107,4 @@ Show the user a summary:
 Check `tracker.md` for work items related to the ingested source:
 - If any items reference this source or topic, suggest updating their status
 - If the ingestion reveals new work (follow-up research, contradictions to resolve, pages to create), suggest adding items to the tracker
-- Append a session log entry to `tracker.md` noting what was ingested
+- Append a log entry to `log.md` noting what was ingested

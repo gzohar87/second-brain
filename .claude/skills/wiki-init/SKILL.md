@@ -76,7 +76,7 @@ Present the proposal and **wait for user approval** before creating anything.
    Vault created for: <domain description>
    Structure: <list approved subdirs>
    ```
-6. Verify `tracker.md` exists (created by `sb init`). If missing, create it with frontmatter (`type: tracker`) and sections: `## Session Log`, `## Work Items`, `## Lint Findings`
+6. Verify `tracker.md` exists (created by `sb init`). If missing, create it with frontmatter (`type: tracker`) and sections: `## Work Items`, `## Lint Findings`
 
 ### Embedded mode
 Same as above, but:

@@ -23,7 +23,7 @@ Internal documentation of the framework itself — architecture, decisions, conc
 
 ## Phase 3.5: Work tracker (done)
 
-`tracker.md` as a first-class vault file for tracking work items, session history, and lint findings.
+`tracker.md` as a first-class vault file for tracking work items and lint findings.
 
 ## Phase 4: Bootstrap script + docs
 

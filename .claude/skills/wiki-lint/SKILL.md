@@ -33,6 +33,13 @@ Pages without proper YAML frontmatter, or missing required fields (`title`, `typ
 ### Empty / stub pages
 Pages with very little content — under ~5 lines of actual content (excluding frontmatter).
 
+### Unresolved comments
+Scan all pages for user-left review comments. These are inline notes left by the user (typically in Obsidian) requesting changes or raising questions. Look for:
+- Callout blocks: `> [!comment] ...`
+- HTML comment markers: `<!-- COMMENT: ... -->`
+
+Surface each one with its location and content so it can be addressed.
+
 ### Stale file-path references
 For embedded (code-adjacent) wikis: code paths cited in wiki pages (e.g., `src/foo.ts:12`) where the **file no longer exists** in the repo. Scan for patterns like backtick-wrapped file paths and verify they exist.
 
@@ -58,6 +65,16 @@ Pages covering **related topics** that should link to each other but don't. Look
 ### Synthesis gaps
 Areas where **multiple sources** touch on a topic but no comparison or synthesis page exists to tie them together.
 
+### Misplaced content
+Each file in the vault has a defined role. Content should live in the right place — not drift into the wrong file. Check for:
+- **Tasks in wiki pages** — wiki pages document knowledge, not work items. Task lists (`- [ ] ...`) belong in `tracker.md`, not in wiki pages.
+- **Narrative in tracker** — `tracker.md` is a structured list of work items, not a journal. If it contains long prose, session narratives, or explanations that belong in `log.md` or a wiki page, flag it.
+- **Log entries in wiki pages** — chronological "what happened" entries belong in `log.md`, not scattered across wiki pages. Wiki pages should describe the current state of knowledge, not a timeline.
+- **Wiki content in log** — `log.md` records what changed and when. If it contains detailed explanations or knowledge that should be a wiki page, flag it.
+- **Frontmatter `type` mismatches** — a page with `type: concept` that reads like a decision record, or `type: reference` that reads like a how-to guide. The type should match the actual content.
+
+The principle: every piece of information has a correct home. Knowledge goes in wiki pages, tasks go in the tracker, chronological records go in the log, and the index is a catalog — not a page with content of its own.
+
 ### Wiki structure
 Evaluate whether the overall directory structure and page grouping still make sense:
 - Are subdirectories becoming too large or too small? Should any be split or merged?
@@ -77,6 +94,8 @@ Structure the report by severity:
 - Missing frontmatter
 
 ### Warnings (should review)
+- Unresolved comments (user review notes left inline)
+- Misplaced content (tasks in wiki pages, prose in tracker, etc.)
 - Contradictions
 - Stale content
 - Stale file-path references

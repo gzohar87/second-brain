@@ -16,7 +16,7 @@ Lint scans the wiki for structural and semantic issues. It is one of the core sk
 ## Pipeline
 
 1. **Scan** — Enumerate all wiki pages and their frontmatter.
-2. **Mechanical checks** — Validate frontmatter fields, broken wikilinks, missing index entries.
+2. **Mechanical checks** — Validate frontmatter fields, broken wikilinks, missing index entries, unresolved user comments.
 3. **Semantic checks** — Detect stale content, redundant pages, orphaned references.
 4. **Report** — Present findings grouped by severity.
 5. **Offer fixes** — Propose and optionally apply corrections interactively.

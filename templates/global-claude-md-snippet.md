@@ -33,10 +33,9 @@ Skills (`/wiki-init`, `/wiki-ingest`, `/wiki-query`, `/wiki-lint`) are installed
 3. Note contradictions explicitly — do not silently resolve conflicting information
 
 #### Work Tracker
-- `tracker.md` tracks work items, session history, and lint findings
+- `tracker.md` tracks work items and lint findings
 - Format: `- [ ] \`status\` \`priority\` Description — output: [[page]]`
 - Statuses: `todo`, `in-progress`, `blocked`, `done`
 - Priorities: `high`, `medium`, `low`
-- **Session log**: append a brief note at session start (what you're picking up) and end (what was done, what's next)
 - **Always** consult `tracker.md` at the start of a conversation for orientation
 <!-- END sb -->

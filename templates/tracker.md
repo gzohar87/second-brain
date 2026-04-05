@@ -8,10 +8,6 @@ tags: []
 
 # Work Tracker
 
-## Session Log
-
-<!-- Most recent first. LLM appends here at session start/end. -->
-
 ## Work Items
 
 <!-- Format: - [ ] `status` `priority` Description — output: [[page-link]] -->
