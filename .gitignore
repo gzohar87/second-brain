@@ -1,8 +1,8 @@
 # Obsidian
-.obsidian/workspace.json
-.obsidian/workspace-mobile.json
-.obsidian/plugins/
-.obsidian/themes/
+.obsidian/
+
+# IDE
+.vscode/
 
 # OS
 .DS_Store
