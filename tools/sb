@@ -253,5 +253,93 @@ def unlink(repo: str):
     click.echo(f"Unlinked wiki from {repo_root}")
 
 
+@cli.command()
+def status():
+    """Show installed skills, linked wiki, and vault health."""
+    # 1. Installed skills
+    installed = sorted(
+        d.name for d in GLOBAL_SKILLS_DST.glob("wiki-*") if d.is_dir()
+    ) if GLOBAL_SKILLS_DST.exists() else []
+
+    click.echo("=== Skills ===")
+    if installed:
+        for s in installed:
+            click.echo(f"  {s}")
+    else:
+        click.echo("  (none installed)")
+
+    # 2. Detect vault — either cwd is a vault, or cwd has a linked wiki
+    cwd = Path.cwd()
+    vault = None
+    vault_source = None
+
+    if (cwd / "index.md").exists() and (cwd / "wiki").is_dir():
+        vault = cwd
+        vault_source = "vault (cwd)"
+    else:
+        claude_md = cwd / "CLAUDE.md"
+        if claude_md.exists():
+            content = claude_md.read_text()
+            match = re.search(r"Wiki location: `([^`]+)`", content)
+            if match:
+                linked = Path(match.group(1).rstrip("/"))
+                if linked.is_dir():
+                    vault = linked
+                    vault_source = f"linked → {vault}"
+
+    click.echo()
+    click.echo("=== Wiki ===")
+    if vault:
+        click.echo(f"  Source: {vault_source}")
+    else:
+        click.echo("  (no vault detected)")
+        return
+
+    # 3. Vault health — scan all .md files recursively, skip raw/
+    scaffold = {"index", "log", "tracker"}
+    all_md = [
+        p for p in vault.rglob("*.md")
+        if "raw" not in p.relative_to(vault).parts
+        and ".obsidian" not in p.relative_to(vault).parts
+    ]
+    all_pages = {p.stem for p in all_md}
+    content_pages = all_pages - scaffold
+
+    def extract_link_targets(text: str) -> set[str]:
+        """Extract page names from [[wikilinks]], stripping anchors and aliases."""
+        targets = set()
+        for m in re.finditer(r"\[\[([^\]|]+)(?:\|[^\]]*)?\]\]", text):
+            page = m.group(1).split("#")[0]  # strip anchor
+            if page:
+                targets.add(page)
+        return targets
+
+    # Pages listed in index.md
+    index_file = vault / "index.md"
+    indexed = set()
+    if index_file.exists():
+        indexed = extract_link_targets(index_file.read_text())
+
+    # Scan all md files for [[wikilinks]]
+    all_links = set()
+    for md in all_md:
+        all_links |= extract_link_targets(md.read_text())
+
+    orphans = content_pages - indexed
+    broken = all_links - all_pages
+
+    click.echo()
+    click.echo("=== Health ===")
+    click.echo(f"  Pages: {len(all_pages)} total ({len(content_pages)} content + {len(all_pages & scaffold)} scaffold)")
+    if orphans:
+        click.echo(f"  Orphans (not in index): {', '.join(sorted(orphans))}")
+    else:
+        click.echo("  Orphans: none")
+    if broken:
+        click.echo(f"  Broken links: {', '.join(sorted(broken))}")
+    else:
+        click.echo("  Broken links: none")
+
+
 if __name__ == "__main__":
     cli()
