@@ -34,6 +34,15 @@ sb init --embedded --name research  # creates research/
 
 Then restart Claude Code and run `/wiki-init` to configure the wiki for your domain.
 
+## Update
+
+```bash
+sb update                      # update skills and CLAUDE.md snippet to latest
+sb update --name research      # if you used a custom name
+```
+
+Wiki content (raw/, wiki/, index.md, log.md) is never touched.
+
 ## Uninstall
 
 ```bash

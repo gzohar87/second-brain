@@ -5,6 +5,7 @@ set -euo pipefail
 # Usage:
 #   sb init <path>                              Standalone vault (new git repo)
 #   sb init --embedded [--name NAME] [path]     Embedded vault inside existing repo
+#   sb update [--name NAME] [path]              Update skills and CLAUDE.md snippet to latest
 #   sb uninstall [--name NAME] [path]           Remove embedded vault and skills
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +17,7 @@ usage() {
 Usage:
   sb init <path>                              Create a standalone wiki vault
   sb init --embedded [--name NAME] [path]     Create an embedded wiki inside an existing repo
+  sb update [--name NAME] [path]              Update skills and CLAUDE.md snippet to latest version
   sb uninstall [--name NAME] [path]           Remove embedded vault, skills, and CLAUDE.md snippet
 
 Options:
@@ -33,8 +35,8 @@ die() { echo "Error: $*" >&2; exit 1; }
 SUBCOMMAND="$1"; shift
 
 case "$SUBCOMMAND" in
-  init|uninstall) ;;
-  *) die "Unknown subcommand '$SUBCOMMAND'. Use 'init' or 'uninstall'." ;;
+  init|update|uninstall) ;;
+  *) die "Unknown subcommand '$SUBCOMMAND'. Use 'init', 'update', or 'uninstall'." ;;
 esac
 
 EMBEDDED=false
@@ -212,9 +214,61 @@ cmd_uninstall() {
   echo "  Restart Claude Code to clear cached skills."
 }
 
+# =============================================================================
+# UPDATE
+# =============================================================================
+
+cmd_update() {
+  resolve_repo
+
+  echo "Updating wiki in $REPO_ROOT to latest version ..."
+  echo ""
+
+  # Update skills
+  SKILLS_DST="$REPO_ROOT/.claude/skills"
+  mkdir -p "$SKILLS_DST"
+  local updated_skills=0
+  for skill_dir in "$FRAMEWORK_DIR/.claude/skills"/wiki-*/; do
+    skill_name="$(basename "$skill_dir")"
+    if [[ -d "$skill_dir" ]]; then
+      rm -rf "$SKILLS_DST/$skill_name"
+      cp -r "$skill_dir" "$SKILLS_DST/$skill_name"
+      echo "  Updated skill: $skill_name"
+      updated_skills=$((updated_skills + 1))
+    fi
+  done
+
+  # Update CLAUDE.md snippet
+  WIKI_PATH_PLACEHOLDER="$VAULT_NAME/"
+  template() {
+    sed -e "s/{{DATE}}/$TODAY/g" \
+        -e "s|{{WIKI_PATH}}|$WIKI_PATH_PLACEHOLDER|g" \
+        -e "s/{{TITLE}}/$VAULT_NAME/g" \
+        "$FRAMEWORK_DIR/templates/$1"
+  }
+
+  if [[ -f "$REPO_ROOT/CLAUDE.md" ]] && grep -q "BEGIN second-brain wiki conventions" "$REPO_ROOT/CLAUDE.md"; then
+    # Strip old snippet, append new one
+    sed -i '/<!-- BEGIN second-brain wiki conventions -->/,/<!-- END second-brain wiki conventions -->/d' "$REPO_ROOT/CLAUDE.md"
+    sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$REPO_ROOT/CLAUDE.md"
+    echo "" >> "$REPO_ROOT/CLAUDE.md"
+    template claude-md-snippet.md >> "$REPO_ROOT/CLAUDE.md"
+    echo "  Updated CLAUDE.md wiki conventions"
+  else
+    echo "  No wiki conventions markers found in CLAUDE.md (skipping)"
+  fi
+
+  echo ""
+  echo "=== Wiki updated ==="
+  echo "  Skills updated: $updated_skills"
+  echo "  Wiki content: untouched"
+  echo "  Restart Claude Code to pick up changes."
+}
+
 # --- Dispatch ---
 
 case "$SUBCOMMAND" in
   init)      cmd_init ;;
+  update)    cmd_update ;;
   uninstall) cmd_uninstall ;;
 esac
