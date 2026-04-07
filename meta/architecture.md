@@ -2,7 +2,7 @@
 title: "Architecture"
 type: concept
 created: 2026-04-05
-updated: 2026-04-05
+updated: 2026-04-07
 sources: []
 tags: [meta, architecture]
 ---
@@ -15,7 +15,7 @@ The framework organizes knowledge into three layers: raw sources (original mater
 
 ## Vault Model
 
-Wikis are always standalone directories with their own git repo. A wiki can be linked to a code repo via `sb link`, which injects wiki conventions into the repo's CLAUDE.md. When linked, wiki pages can cite file paths in the repo (e.g., `src/auth/handler.ts:45`) rather than copying code — keeping the wiki in sync with the codebase.
+Wikis are always standalone private directories with their own git repo. Vaults are registered globally via `sb register`, which adds them to `~/.claude/sb-vaults.json` and renders them into `~/.claude/CLAUDE.md`. Every Claude Code session sees all registered vaults without any per-repo configuration. See [[design-decisions]] ADR-6.
 
 ## Skills-Based Operation
 

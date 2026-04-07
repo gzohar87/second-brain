@@ -25,6 +25,21 @@ Pages created:
 Pages updated:
 - [[index]] — added tracker entry
 
+## [2026-04-07] updated | Replace per-repo linking with global vault registry
+
+Removed `sb link`/`sb unlink` (wrote wiki paths into public repo CLAUDE.md). Replaced with `sb register`/`sb unregister` — stores vault paths in private `~/.claude/sb-vaults.json`, renders into `~/.claude/CLAUDE.md`. Wikis are now assumed private.
+
+Pages updated:
+- [[architecture]] — vault model now uses global registry
+- [[design-decisions]] — added ADR-6
+
+Files updated:
+- `tools/sb` — replaced link/unlink with register/unregister, updated status/update
+- `templates/global-claude-md-snippet.md` — updated commands and vault listing
+
+Files removed:
+- `templates/claude-md-snippet.md` — per-repo snippet no longer needed
+
 ## [2026-04-05] created | Wiki automation — distill & lint scheduling
 
 Added scheduled automation for wiki maintenance:

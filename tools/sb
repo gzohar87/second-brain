@@ -20,6 +20,7 @@ TEMPLATES_DIR = FRAMEWORK_DIR / "templates"
 SKILLS_SRC = FRAMEWORK_DIR / ".claude" / "skills"
 GLOBAL_SKILLS_DST = Path.home() / ".claude" / "skills"
 GLOBAL_CLAUDE_MD = Path.home() / ".claude" / "CLAUDE.md"
+VAULT_REGISTRY = Path.home() / ".claude" / "sb-vaults.json"
 TODAY = date.today().isoformat()
 
 OBSIDIAN_CONFIG = {
@@ -30,10 +31,33 @@ OBSIDIAN_CONFIG = {
     "userIgnoreFilters": ["raw/"],
 }
 
+def load_registry() -> list[dict]:
+    """Load the vault registry, returning an empty list if missing."""
+    if VAULT_REGISTRY.exists():
+        return json.loads(VAULT_REGISTRY.read_text()) or []
+    return []
+
+
+def save_registry(vaults: list[dict]):
+    """Save the vault registry."""
+    VAULT_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
+    VAULT_REGISTRY.write_text(json.dumps(vaults, indent=2) + "\n")
+
+
 def render_global_claude_section() -> str:
-    """Render the global CLAUDE.md section from its template."""
+    """Render the global CLAUDE.md section from its template, including registered vaults."""
     text = (TEMPLATES_DIR / "global-claude-md-snippet.md").read_text()
-    return text.replace("{{FRAMEWORK_DIR}}", str(FRAMEWORK_DIR)).rstrip("\n")
+    text = text.replace("{{FRAMEWORK_DIR}}", str(FRAMEWORK_DIR))
+
+    # Append registered vaults
+    vaults = load_registry()
+    if vaults:
+        lines = ["\n### Registered Vaults\n"]
+        for v in vaults:
+            lines.append(f"- **{v['name']}** — `{v['path']}`")
+        text += "\n".join(lines)
+
+    return text.rstrip("\n")
 
 
 # ---------------------------------------------------------------------------
@@ -96,25 +120,11 @@ def install_global_claude_md():
     logger.info(f"Updated {GLOBAL_CLAUDE_MD}")
 
 
-WIKI_BEGIN = "<!-- BEGIN second-brain wiki conventions -->"
-WIKI_END = "<!-- END second-brain wiki conventions -->"
-
-
 def resolve_vault(path_str: str = ".") -> Path:
-    """Resolve a path to a vault root, checking both direct and linked."""
+    """Resolve a path to a vault root (direct detection only)."""
     p = Path(path_str).resolve()
-    # Direct vault: has index.md and wiki/ or meta/
     if (p / "index.md").exists() and ((p / "wiki").is_dir() or (p / "meta").is_dir()):
         return p
-    # Linked wiki via CLAUDE.md
-    claude_md = p / "CLAUDE.md"
-    if claude_md.exists():
-        content = claude_md.read_text()
-        match = re.search(r"Wiki location: `([^`]+)`", content)
-        if match:
-            linked = Path(match.group(1).rstrip("/"))
-            if linked.is_dir():
-                return linked
     raise click.ClickException(f"No vault found at '{p}'")
 
 
@@ -185,7 +195,7 @@ def init(path: str):
     click.echo(f"  Files      : index.md  log.md  tracker.md  config.yml")
     click.echo()
     click.echo("Next steps:")
-    click.echo(f"  sb link {vault} --repo <your-repo>")
+    click.echo(f"  sb register {vault}")
 
 
 def update_vault(vault: Path):
@@ -214,31 +224,20 @@ def update_vault(vault: Path):
 
 @cli.command()
 def update():
-    """Refresh global install and update linked repo if applicable."""
+    """Refresh global install and update all registered vaults."""
     # 1. Global refresh
     installed = install_skills()
     install_global_claude_md()
     click.echo(f"  Skills refreshed: {', '.join(installed)}")
 
-    # 2. If cwd has a wiki link, refresh the snippet and update the linked vault
-    cwd = Path.cwd()
-    claude_md = cwd / "CLAUDE.md"
-    if claude_md.exists():
-        content = claude_md.read_text()
-        if WIKI_BEGIN in content:
-            match = re.search(r"Wiki location: `([^`]+)`", content)
-            if match:
-                wiki_path = match.group(1)
-                vault_name = Path(wiki_path.rstrip("/")).name
-                snippet = render_template("claude-md-snippet.md", title=vault_name, wiki_path=wiki_path)
-                upsert_section(claude_md, WIKI_BEGIN, WIKI_END, snippet)
-                logger.info(f"Refreshed wiki snippet in {claude_md}")
-                # Update the linked vault itself
-                vault = Path(wiki_path.rstrip("/"))
-                if vault.is_dir():
-                    update_vault(vault)
+    # 2. Update all registered vaults
+    for entry in load_registry():
+        vault = Path(entry["path"])
+        if vault.is_dir():
+            update_vault(vault)
 
-    # 3. If cwd is itself a vault, update it directly
+    # 3. If cwd is itself a vault (even if not registered), update it
+    cwd = Path.cwd()
     if (cwd / "index.md").exists() and (cwd / "wiki").is_dir():
         update_vault(cwd)
 
@@ -248,50 +247,94 @@ def update():
 
 
 @cli.command()
-@click.argument("wiki_path", type=click.Path(exists=True))
-@click.option("--repo", default=".", type=click.Path(exists=True), help="Target repo (default: cwd)")
-def link(wiki_path: str, repo: str):
-    """Point a repo at an external wiki vault."""
-    wiki = Path(wiki_path).resolve()
-    repo_root = Path(repo).resolve()
+@click.argument("vault_path", type=click.Path(exists=True))
+def register(vault_path: str):
+    """Register a vault so Claude sees it in every session."""
+    vault = Path(vault_path).resolve()
+    if not (vault / "index.md").exists():
+        raise click.ClickException(f"'{vault}' doesn't look like a wiki (no index.md)")
 
-    if not (wiki / "index.md").exists():
-        raise click.ClickException(f"'{wiki}' doesn't look like a wiki (no index.md)")
+    vaults = load_registry()
+    if any(v["path"] == str(vault) for v in vaults):
+        raise click.ClickException(f"Already registered: {vault.name}")
 
-    claude_md = repo_root / "CLAUDE.md"
-    if claude_md.exists() and WIKI_BEGIN in claude_md.read_text():
-        raise click.ClickException("Repo already linked to a wiki. Run 'sb unlink' first.")
+    vaults.append({"name": vault.name, "path": str(vault)})
+    save_registry(vaults)
+    install_global_claude_md()  # re-render with new vault list
 
-    vault_name = wiki.name
-    snippet = render_template("claude-md-snippet.md", title=vault_name, wiki_path=f"{wiki}/")
-    upsert_section(claude_md, WIKI_BEGIN, WIKI_END, snippet)
-
-    click.echo(f"Linked: {repo_root} → {wiki}")
+    click.echo(f"Registered: {vault.name} ({vault})")
+    click.echo("  Restart Claude Code to pick up changes.")
 
 
 @cli.command()
-@click.option("--repo", default=".", type=click.Path(exists=True), help="Target repo (default: cwd)")
-def unlink(repo: str):
-    """Remove wiki link from a repo's CLAUDE.md."""
-    repo_root = Path(repo).resolve()
-    claude_md = repo_root / "CLAUDE.md"
+@click.argument("name")
+def unregister(name: str):
+    """Remove a vault from the global registry."""
+    vaults = load_registry()
+    before = len(vaults)
+    vaults = [v for v in vaults if v["name"] != name]
+    if len(vaults) == before:
+        raise click.ClickException(f"No vault registered with name '{name}'")
 
-    if not claude_md.exists():
-        raise click.ClickException("No CLAUDE.md found")
+    save_registry(vaults)
+    install_global_claude_md()  # re-render without removed vault
 
-    content = claude_md.read_text()
-    if WIKI_BEGIN not in content:
-        raise click.ClickException("No wiki link found in CLAUDE.md")
+    click.echo(f"Unregistered: {name}")
+    click.echo("  Restart Claude Code to pick up changes.")
 
-    content = strip_section(content, WIKI_BEGIN, WIKI_END).strip() + "\n"
-    claude_md.write_text(content)
 
-    click.echo(f"Unlinked wiki from {repo_root}")
+def show_vault_health(vault: Path):
+    """Print health and automation info for a single vault."""
+    scaffold = {"index", "log", "tracker"}
+    all_md = [
+        p for p in vault.rglob("*.md")
+        if "raw" not in p.relative_to(vault).parts
+        and ".obsidian" not in p.relative_to(vault).parts
+    ]
+    all_pages = {p.stem for p in all_md}
+    content_pages = all_pages - scaffold
+
+    def extract_link_targets(text: str) -> set[str]:
+        targets = set()
+        for m in re.finditer(r"\[\[([^\]|]+)(?:\|[^\]]*)?\]\]", text):
+            page = m.group(1).split("#")[0]
+            if page:
+                targets.add(page)
+        return targets
+
+    index_file = vault / "index.md"
+    indexed = set()
+    if index_file.exists():
+        indexed = extract_link_targets(index_file.read_text())
+
+    all_links = set()
+    for md in all_md:
+        all_links |= extract_link_targets(md.read_text())
+
+    orphans = content_pages - indexed
+    broken = all_links - all_pages
+
+    click.echo(f"  Pages: {len(all_pages)} total ({len(content_pages)} content + {len(all_pages & scaffold)} scaffold)")
+    if orphans:
+        click.echo(f"  Orphans (not in index): {', '.join(sorted(orphans))}")
+    if broken:
+        click.echo(f"  Broken links: {', '.join(sorted(broken))}")
+    if not orphans and not broken:
+        click.echo("  No issues")
+
+    config = load_config(vault)
+    auto = config.get("automation", {})
+    for name in ("distill", "lint"):
+        section = auto.get(name, {})
+        enabled = section.get("enabled", False)
+        schedule = section.get("schedule", "—")
+        status_str = f"enabled ({schedule})" if enabled else "disabled"
+        click.echo(f"  {name}: {status_str}")
 
 
 @cli.command()
 def status():
-    """Show installed skills, linked wiki, and vault health."""
+    """Show installed skills and registered vault health."""
     # 1. Installed skills
     installed = sorted(
         d.name for d in GLOBAL_SKILLS_DST.glob("wiki-*") if d.is_dir()
@@ -304,89 +347,21 @@ def status():
     else:
         click.echo("  (none installed)")
 
-    # 2. Detect vault — either cwd is a vault, or cwd has a linked wiki
-    cwd = Path.cwd()
-    vault = None
-    vault_source = None
-
-    if (cwd / "index.md").exists() and (cwd / "wiki").is_dir():
-        vault = cwd
-        vault_source = "vault (cwd)"
-    else:
-        claude_md = cwd / "CLAUDE.md"
-        if claude_md.exists():
-            content = claude_md.read_text()
-            match = re.search(r"Wiki location: `([^`]+)`", content)
-            if match:
-                linked = Path(match.group(1).rstrip("/"))
-                if linked.is_dir():
-                    vault = linked
-                    vault_source = f"linked → {vault}"
-
+    # 2. Registered vaults
+    vaults = load_registry()
     click.echo()
-    click.echo("=== Wiki ===")
-    if vault:
-        click.echo(f"  Source: {vault_source}")
-    else:
-        click.echo("  (no vault detected)")
+    click.echo("=== Vaults ===")
+    if not vaults:
+        click.echo("  (none registered)")
         return
 
-    # 3. Vault health — scan all .md files recursively, skip raw/
-    scaffold = {"index", "log", "tracker"}
-    all_md = [
-        p for p in vault.rglob("*.md")
-        if "raw" not in p.relative_to(vault).parts
-        and ".obsidian" not in p.relative_to(vault).parts
-    ]
-    all_pages = {p.stem for p in all_md}
-    content_pages = all_pages - scaffold
-
-    def extract_link_targets(text: str) -> set[str]:
-        """Extract page names from [[wikilinks]], stripping anchors and aliases."""
-        targets = set()
-        for m in re.finditer(r"\[\[([^\]|]+)(?:\|[^\]]*)?\]\]", text):
-            page = m.group(1).split("#")[0]  # strip anchor
-            if page:
-                targets.add(page)
-        return targets
-
-    # Pages listed in index.md
-    index_file = vault / "index.md"
-    indexed = set()
-    if index_file.exists():
-        indexed = extract_link_targets(index_file.read_text())
-
-    # Scan all md files for [[wikilinks]]
-    all_links = set()
-    for md in all_md:
-        all_links |= extract_link_targets(md.read_text())
-
-    orphans = content_pages - indexed
-    broken = all_links - all_pages
-
-    click.echo()
-    click.echo("=== Health ===")
-    click.echo(f"  Pages: {len(all_pages)} total ({len(content_pages)} content + {len(all_pages & scaffold)} scaffold)")
-    if orphans:
-        click.echo(f"  Orphans (not in index): {', '.join(sorted(orphans))}")
-    else:
-        click.echo("  Orphans: none")
-    if broken:
-        click.echo(f"  Broken links: {', '.join(sorted(broken))}")
-    else:
-        click.echo("  Broken links: none")
-
-    # 4. Automation config
-    config = load_config(vault)
-    auto = config.get("automation", {})
-    click.echo()
-    click.echo("=== Automation ===")
-    for name in ("distill", "lint"):
-        section = auto.get(name, {})
-        enabled = section.get("enabled", False)
-        schedule = section.get("schedule", "—")
-        status_str = f"enabled ({schedule})" if enabled else "disabled"
-        click.echo(f"  {name}: {status_str}")
+    for entry in vaults:
+        vault = Path(entry["path"])
+        click.echo(f"\n  {entry['name']} — {vault}")
+        if vault.is_dir() and (vault / "index.md").exists():
+            show_vault_health(vault)
+        else:
+            click.echo("  ⚠ path not found")
 
 
 @cli.command()
