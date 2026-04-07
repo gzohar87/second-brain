@@ -49,13 +49,14 @@ def render_global_claude_section() -> str:
     text = (TEMPLATES_DIR / "global-claude-md-snippet.md").read_text()
     text = text.replace("{{FRAMEWORK_DIR}}", str(FRAMEWORK_DIR))
 
-    # Append registered vaults
+    # Insert registered vaults before the closing marker
     vaults = load_registry()
     if vaults:
         lines = ["\n### Registered Vaults\n"]
         for v in vaults:
             lines.append(f"- **{v['name']}** — `{v['path']}`")
-        text += "\n".join(lines)
+        vault_block = "\n".join(lines) + "\n"
+        text = text.replace("<!-- END sb -->", vault_block + "<!-- END sb -->")
 
     return text.rstrip("\n")
 

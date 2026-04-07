@@ -1,17 +1,22 @@
 ---
 name: wiki-query
-description: Answer questions from the wiki with citations, optionally filing results as new pages
+description: "Primary interface for reading and querying the wiki — use this whenever you need to understand, search, explore, or answer questions about wiki content"
+trigger: "ALWAYS use this skill when: the user asks about wiki content, you need to look something up in the wiki, you need an overview or orientation of what's in the wiki, or you need to answer a question that the wiki might cover. Do NOT read wiki files directly with Read/Grep — use this skill instead."
 ---
 
 # Wiki Query
 
-You are answering a question using the wiki as your knowledge base.
+You are reading and querying the wiki. This skill is the primary interface for all wiki reads — whether the user asks a specific question, wants an overview, or you need to look something up.
 
-## Step 1: Understand the Question
+## Step 1: Understand the Request
 
-The user's question is provided as an argument or in the conversation context. Identify:
-- What specifically is being asked
-- What type of answer would be most useful (factual lookup, comparison, analysis, overview)
+The user's request may be:
+- A specific question ("what does X do?", "how does Y work?")
+- An exploration ("read through the wiki", "what's in the wiki?", "give me an overview")
+- A status check ("what am I working on?", "what's the current state?")
+- A search ("find everything about X")
+
+Identify what type of response would be most useful (factual lookup, comparison, analysis, overview, orientation).
 
 ## Step 2: Search the Wiki
 

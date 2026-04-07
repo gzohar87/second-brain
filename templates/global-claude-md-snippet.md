@@ -40,6 +40,7 @@ Setup: run `/wiki-automate` in Claude Code to register schedules from `config.ym
 1. **Never** modify anything in `raw/` — that directory is source-of-truth input
 2. **Always** update `index.md` and `log.md` when creating or modifying wiki pages. Consult `tracker.md` at session start for orientation.
 3. Note contradictions explicitly — do not silently resolve conflicting information
+4. **Use wiki skills as the primary interface.** Use `/wiki-query` to read, search, or answer questions about wiki content — do not read wiki files directly with Read/Grep. Use `/wiki-ingest` to add new content. Direct file access is only for mechanical operations (editing frontmatter, fixing links).
 
 #### Work Tracker
 - `tracker.md` tracks work items and lint findings
